@@ -72,7 +72,7 @@ const mediaFragmentRecorder = async(urls) => {
                   audioMediaStream = audioContext.createMediaStreamDestination();
                   sourceNode = audioContext.createMediaElementSource(videoStream);
                   gainNode = audioContext.createGain();
-                  gainNode.gain.value = 0;
+                  gainNode.gain.value = 1;
                   gainNode.connect(audioContext.destination)
                   sourceNode.connect(audioContext.destination);
                   sourceNode.connect(audioMediaStream);
