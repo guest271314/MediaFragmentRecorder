@@ -1,11 +1,11 @@
-const multipleUrls = [
+
+    const multipleUrls = [
       "https://media.w3.org/2010/05/sintel/trailer.mp4#t=0,5",
       "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=55,60",
       "https://raw.githubusercontent.com/w3c/web-platform-tests/master/media-source/mp4/test.mp4#t=0,5",
       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4#t=0,5",
       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4#t=0,5",
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6",
-      
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6",  
       "https://media.w3.org/2010/05/video/movie_300.mp4#t=30,36"
     ];
 
