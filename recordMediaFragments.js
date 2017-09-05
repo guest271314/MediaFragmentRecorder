@@ -1,6 +1,17 @@
 // recordMediaFragments.js 2017 guest271314
 // https://github.com/guest271314/recordMediaFragments
 
+// https://github.com/guest271314/recordMediaFragments/blob/master/ts-ebml/ts-ebml-min.js
+const tsebml = require("ts-ebml");
+
+const video = document.querySelector("video");
+
+const videoStream = document.createElement("video");
+// `MediaSource`
+const mediaSource = new MediaSource();
+
+const mimeCodec = "video/webm;codecs=vp8,opus";
+
 const mediaFragmentRecorder = async(urls) => {
       // `ts-ebml`
       const tsebmlTools = async() => ({
