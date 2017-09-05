@@ -67,7 +67,8 @@ const multipleUrls = [
 mediaFragmentRecorder(<URL string or array of URLs>)
 .then(recordedMediaFragments => {
   // `recordedMediaFragments` : array of objects : 
-  // `mediaBlob:Blob, mediaBuffer:ArrayBuffer, mediaFileName:<filename>, mediaDuration:<media duration>`
+  // `mediaBlob:Blob, mediaBuffer:ArrayBuffer, mediaFileName:<filename>, mediaDuration:<media duration>`,
+  // `mediaFragmentType`: <"singleMediaFragment" or "multipleMediaFragments">
   // do stuff with recorded media fragments
   console.log(recordedMediaFragments);
   const select = document.createElement("select");
