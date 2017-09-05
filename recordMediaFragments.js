@@ -2,17 +2,17 @@
 // https://github.com/guest271314/recordMediaFragments
 
 // https://github.com/guest271314/recordMediaFragments/blob/master/ts-ebml/ts-ebml-min.js
-const tsebml = require("ts-ebml");
+// const tsebml = require("ts-ebml");
 
-const video = document.querySelector("video");
+// const video = document.querySelector("video");
 
-const videoStream = document.createElement("video");
+// const videoStream = document.createElement("video");
 // `MediaSource`
-const mediaSource = new MediaSource();
+// const mediaSource = new MediaSource();
 
-const mimeCodec = "video/webm;codecs=vp8,opus";
+// const mimeCodec = "video/webm;codecs=vp8,opus";
 
-const mediaFragmentRecorder = async(urls) => {
+    const mediaFragmentRecorder = async(urls) => {
       // `ts-ebml`
       const tsebmlTools = async() => ({
         decoder: new tsebml.Decoder(),
@@ -237,6 +237,7 @@ const mediaFragmentRecorder = async(urls) => {
               audioMediaStream = audioContext.createMediaStreamDestination();
               sourceNode = audioContext.createMediaElementSource(videoStream);
               gainNode = audioContext.createGain();
+              // trying to get audio output
               gainNode.gain.value = 1;
               gainNode.connect(audioContext.destination)
               sourceNode.connect(audioContext.destination);
@@ -272,14 +273,20 @@ const mediaFragmentRecorder = async(urls) => {
             fragments.height = video.height;
             fragments.controls = true;
             fragments.onloadedmetadata = () => {
+              fragments.onloadedmetadata = null;
               mediaFragmentsRecording.mediaDuration = fragments.duration;
               resolveAllMedia([
                 ...mediaFragments, mediaFragmentsRecording
               ]);
+              fragments.src = "";
+              URL.revokeObjectURL(currentBlobURL);
+              document.body.appendChild(fragments);
+              if (audioContext) {
+                audioContext.close()
+              }
             }
-            fragments.src = URL.createObjectURL(mediaFragmentsRecording.mediaBlob);
-            document.body.appendChild(fragments);
-
+            currentBlobURL = URL.createObjectURL(mediaFragmentsRecording.mediaBlob);
+            fragments.src = currentBlobURL;
           }
 
           recorder.start();
@@ -360,22 +367,3 @@ const mediaFragmentRecorder = async(urls) => {
 
       return recordedMedia
     };
-
-    mediaFragmentRecorder(geckoUrl)
-      .then(recordedMediaFragments => {
-        // do stuff with recorded media fragments
-        console.log(recordedMediaFragments);
-        const select = document.createElement("select");
-        for (let {
-            mediaFileName, mediaBlob, mediaFragmentType
-          }
-          of Object.values(recordedMediaFragments)) {
-          const option = new Option(mediaFileName, URL.createObjectURL(mediaBlob));
-          select.appendChild(option);
-        }
-        select.onchange = () => {
-          document.getElementById("fragments").src = select.value;
-        }
-        video.parentNode.insertBefore(select, video);
-      })
-      .catch(err => console.error(err));
