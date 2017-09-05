@@ -231,6 +231,7 @@ const mediaFragmentRecorder = async(urls) => {
               resolveMediaStream(video.captureStream());
             } 
             // for firefox
+            // not DRY yet
             else {
               audioContext = new AudioContext();
               audioMediaStream = audioContext.createMediaStreamDestination();
