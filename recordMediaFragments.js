@@ -36,121 +36,121 @@
         // `urls`: string or array of URLs
         // record each media fragment
       const recordMediaFragments = async(video, mimeCodec, decoder, encoder, reader, tools, ...urls) => {
-        urls = [].concat(...urls);
-        const media = [];
-        for (let url of urls) {
-          await new Promise(async(resolve) => {
-            
-            videoStream.width = video.width;
-            videoStream.height = video.height;
+          urls = [].concat(...urls);
+          const media = [];
+          for (let url of urls) {
+            await new Promise(async(resolve) => {
 
-            // for firefox
-            let audioContext, audioMediaStream, audioStream, canvasStream, gainNode, mediaStream, recorder,
+              videoStream.width = video.width;
+              videoStream.height = video.height;
+
+              // for firefox
+              let audioContext, audioMediaStream, audioStream, canvasStream, gainNode, mediaStream, recorder,
                 sourceNode;
 
-            videoStream.onprogress = e => {
-              console.log("loading " + url)
-            }
-
-            videoStream.oncanplay = async(e) => {
-              // for firefox 
-              if (!hasCaptureStream) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height)
-              };
-
-              videoStream.oncanplay = null;
-              videoStream.play();
-
-              mediaStream = await new Promise(resolveMediaStream => {
-                if (hasCaptureStream) {
-                  resolveMediaStream(videoStream.captureStream());
-                } 
-                // for firefox
-                else {
-                  audioContext = new AudioContext();
-
-                  audioMediaStream = audioContext.createMediaStreamDestination();
-                  sourceNode = audioContext.createMediaElementSource(videoStream);
-                  gainNode = audioContext.createGain();
-                  gainNode.gain.value = 1;
-                  gainNode.connect(audioContext.destination)
-                  sourceNode.connect(audioContext.destination);
-                  sourceNode.connect(audioMediaStream);
-                  audioStream = audioMediaStream.stream;
-                  drawVideo(ctx, videoStream, audioStream);
-                  canvasStream = canvas.captureStream(60);
-                  audioStream.addTrack(canvasStream.getVideoTracks()[0]);
-
-                  resolveMediaStream(audioStream);
-                }
-
-              });
-              // record `MediaStream`
-              recorder = new MediaRecorder(mediaStream, {
-                mimeType: mimeCodec
-              });
-
-              recorder.ondataavailable = async(e) => {
-                // stop `MediaStreamTrack`s
-                for (let track of mediaStream.getTracks()) {
-                  track.stop();
-                }
-                // set metadata of recorded media fragment `Blob`
-                const mediaBlob = await setMediaMetadata(e.data);
-                // create `ArrayBuffer` of `Blob` of recorded media fragment
-                const mediaBuffer = await readAsArrayBuffer(mediaBlob);
-                const mediaDuration = videoStream.played.end(0) - videoStream.played.start(0);
-                const mediaFragmentId = currentFragmentURL || new URL(url);
-                const mediaFileName = mediaFragmentId.pathname.split("/").pop() + mediaFragmentId.hash;
-                const mediaFragmentType = "singleMediaFragment";
-                media.push({
-                  mediaBlob, mediaBuffer, mediaDuration, mediaFragmentType, mediaFileName
-                });
-                resolve();
-                if (currentBlobURL) {
-                  URL.revokeObjectURL(currentBlobURL);
-                }
-                if (audioContext) {
-                  audioContext.close()
-                }
+              videoStream.onprogress = e => {
+                console.log("loading " + url)
               }
-              recorder.start();
-            }
-            videoStream.onpause = e => {
-              videoStream.onpause = null;
-              recorder.stop();
-              // stop `MediaStreamTrack`s
-              for (let ms of[audioStream, canvasStream, mediaStream]) {
-                if (ms) {
-                  for (let track of ms.getTracks()) {
+
+              videoStream.oncanplay = async(e) => {
+                // for firefox 
+                if (!hasCaptureStream) {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height)
+                };
+
+                videoStream.oncanplay = null;
+                videoStream.play();
+
+                mediaStream = await new Promise(resolveMediaStream => {
+                  if (hasCaptureStream) {
+                    resolveMediaStream(videoStream.captureStream());
+                  }
+                  // for firefox
+                  else {
+                    audioContext = new AudioContext();
+
+                    audioMediaStream = audioContext.createMediaStreamDestination();
+                    sourceNode = audioContext.createMediaElementSource(videoStream);
+                    gainNode = audioContext.createGain();
+                    gainNode.gain.value = 0;
+                    gainNode.connect(audioContext.destination)
+                    sourceNode.connect(audioContext.destination);
+                    sourceNode.connect(audioMediaStream);
+                    audioStream = audioMediaStream.stream;
+                    drawVideo(ctx, videoStream, audioStream);
+                    canvasStream = canvas.captureStream(60);
+                    audioStream.addTrack(canvasStream.getVideoTracks()[0]);
+
+                    resolveMediaStream(audioStream);
+                  }
+
+                });
+                // record `MediaStream`
+                recorder = new MediaRecorder(mediaStream, {
+                  mimeType: mimeCodec
+                });
+
+                recorder.ondataavailable = async(e) => {
+                  // stop `MediaStreamTrack`s
+                  for (let track of mediaStream.getTracks()) {
                     track.stop();
                   }
+                  // set metadata of recorded media fragment `Blob`
+                  const mediaBlob = await setMediaMetadata(e.data);
+                  // create `ArrayBuffer` of `Blob` of recorded media fragment
+                  const mediaBuffer = await readAsArrayBuffer(mediaBlob);
+                  const mediaDuration = videoStream.played.end(0) - videoStream.played.start(0);
+                  const mediaFragmentId = currentFragmentURL || new URL(url);
+                  const mediaFileName = mediaFragmentId.pathname.split("/").pop() + mediaFragmentId.hash;
+                  const mediaFragmentType = "singleMediaFragment";
+                  media.push({
+                    mediaBlob, mediaBuffer, mediaDuration, mediaFragmentType, mediaFileName
+                  });
+                  resolve();
+                  if (currentBlobURL) {
+                    URL.revokeObjectURL(currentBlobURL);
+                  }
+                  if (audioContext) {
+                    audioContext.close()
+                  }
                 }
+                recorder.start();
               }
-              // for firefox, close `AudioContext`
-              // try to get audio output
-            }
-            // attempt to work around no audio output
-            // for cross origin URL
-            // does not result in audio output
-            /*
-            if (!hasCaptureStream) {
-              currentFragmentURL = new URL(url);
-              console.log(currentFragmentURL);
-              request = new Request(currentFragmentURL.href);
-              blob = await fetch(request).then(response => response.blob());
-              console.log(blob);
-              currentBlobURL = URL.createObjectURL(blob);
-              url = `${currentBlobURL}${currentFragmentURL.hash}`
-            }
-            */
-            videoStream.src = url;
-          }).catch(err => err)
+              videoStream.onpause = e => {
+                  videoStream.onpause = null;
+                  recorder.stop();
+                  // stop `MediaStreamTrack`s
+                  for (let ms of[audioStream, canvasStream, mediaStream]) {
+                    if (ms) {
+                      for (let track of ms.getTracks()) {
+                        track.stop();
+                      }
+                    }
+                  }
+                  // for firefox, close `AudioContext`
+                  // try to get audio output
+                }
+                // attempt to work around no audio output
+                // for cross origin URL
+                // does not result in audio output
+                /*
+                if (!hasCaptureStream) {
+                  currentFragmentURL = new URL(url);
+                  console.log(currentFragmentURL);
+                  request = new Request(currentFragmentURL.href);
+                  blob = await fetch(request).then(response => response.blob());
+                  console.log(blob);
+                  currentBlobURL = URL.createObjectURL(blob);
+                  url = `${currentBlobURL}${currentFragmentURL.hash}`
+                }
+                */
+              videoStream.src = url;
+            }).catch(err => err)
+          }
+          return media
         }
-        return media
-      }
-      // set metadata of media `Blob`
-      // see https://github.com/legokichi/ts-ebml/issues/14#issuecomment-325200151
+        // set metadata of media `Blob`
+        // see https://github.com/legokichi/ts-ebml/issues/14#issuecomment-325200151
       const setMediaMetadata = async(blob) =>
         tsebmlTools()
         .then(async({
@@ -204,40 +204,46 @@
         console.log(decoder, encoder, tools, reader, mediaFragments);
 
         let audioContext, audioMediaStream, audioStream, canvasStream,
-            gainNode, fragments, mediaStream, recorder, sourceNode;
+          gainNode, fragments, mediaStream, recorder, sourceNode;
 
         mediaSource.onsourceended = e => {
-          console.log(e, recorder);
-          recorder.stop();
-          // stop `MediaStreamTrack`s
-          for (let ms of [audioStream, canvasStream, mediaStream]) {
-            if (ms) {
-              for (let track of ms.getTracks()) {
-                track.stop();
+            video.ontimeupdate = e => {
+
+              console.log(video.currentTime, mediaSource.duration);
+              if (video.currentTime === mediaSource.duration) {
+                video.ontimeupdate = null;
+                recorder.stop();
+                console.log(e, recorder);
+
+                // stop `MediaStreamTrack`s
+                for (let ms of[audioStream, canvasStream, mediaStream]) {
+                  if (ms) {
+                    for (let track of ms.getTracks()) {
+                      track.stop();
+                    }
+                  }
+                }
+                // for firefox 
+                if (audioContext) {
+                  audioContext.close()
+                };
               }
             }
           }
-          // for firefox 
-          if (audioContext) {
-            audioContext.close()
-          };
-        }
-        // record `MediaSource` playback of recorded media fragments
-        video.onplaying = async(e) => { 
+          // record `MediaSource` playback of recorded media fragments
+        video.onplaying = async(e) => {
           console.log(e);
           video.onplaying = null;
           mediaStream = await new Promise(resolveMediaStream => {
             if (HTMLMediaElement.prototype.hasOwnProperty("captureStream")) {
               resolveMediaStream(video.captureStream());
-            } 
+            }
             // for firefox
-            // not DRY yet
             else {
               audioContext = new AudioContext();
               audioMediaStream = audioContext.createMediaStreamDestination();
               sourceNode = audioContext.createMediaElementSource(videoStream);
               gainNode = audioContext.createGain();
-              // trying to get audio output
               gainNode.gain.value = 1;
               gainNode.connect(audioContext.destination)
               sourceNode.connect(audioContext.destination);
@@ -256,6 +262,8 @@
           console.log(recorder);
 
           recorder.ondataavailable = async(e) => {
+
+            // video.pause();
             const mediaFragmentsRecording = {};
 
             mediaFragmentsRecording.mediaBlob = await setMediaMetadata(e.data);
@@ -273,90 +281,69 @@
             fragments.height = video.height;
             fragments.controls = true;
             fragments.onloadedmetadata = () => {
-              fragments.onloadedmetadata = null;
-              mediaFragmentsRecording.mediaDuration = fragments.duration;
-              resolveAllMedia([
-                ...mediaFragments, mediaFragmentsRecording
-              ]);
-              fragments.src = "";
-              URL.revokeObjectURL(currentBlobURL);
-              document.body.appendChild(fragments);
-              if (audioContext) {
-                audioContext.close()
-              }
+
+              console.log(fragments.duration);
+
             }
-            currentBlobURL = URL.createObjectURL(mediaFragmentsRecording.mediaBlob);
-            fragments.src = currentBlobURL;
+            document.body.appendChild(fragments);
+            resolveAllMedia([
+              ...mediaFragments, mediaFragmentsRecording
+            ]);
           }
 
           recorder.start();
         }
 
-        mediaSource.addEventListener("sourceopen", sourceOpen);
+
+
+        video.oncanplay = (e) => {
+          console.log(e);
+        }
+
+
 
         video.src = URL.createObjectURL(mediaSource);
 
+        mediaSource.addEventListener("sourceopen", sourceOpen);
+
         async function sourceOpen(e) {
 
-          
+
           if (MediaSource.isTypeSupported(mimeCodec)) {
             const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+            sourceBuffer.mode = "sequence";
             for (let {
                 mediaBuffer, mediaDuration
               }
               of mediaFragments) {
               // for firefox
               if (!hasCaptureStream) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height)
+                // ctx.clearRect(0, 0, canvas.width, canvas.height)
               };
 
               await new Promise(resolveUpdatedMediaSource => {
 
-                video.ontimeupdate = e =>
-                  console.log(video.currentTime, mediaDuration);
-                console.log(sourceBuffer.appendWindowStart,
-                  sourceBuffer.appendWindowEnd);
-                sourceBuffer.appendWindowStart = 0;
-                sourceBuffer.appendWindowEnd = mediaDuration;
-               
                 sourceBuffer.onupdateend = e => {
                   sourceBuffer.onupdateend = null;
-                  console.log(mediaDuration, mediaSource.duration);
-                  // console.log(mediaBuffer.byteLength, sourceBuffer.buffered.start(0), sourceBuffer.buffered.end(0));
-                  video.currentTime = 0;
-                  // chromium 60 renders expected result
-                  // firefox 55 does not reach `canplay` event
-                  // chromium 60: `1 false false 0`
-                  // firefox 55 `1 true false 0`
-                  /* */
-                  console.log(video.readyState, video.paused, video.ended, video.currentTime);
-                  video.oncanplay = async(e) => {
-                    video.oncanplay = null;
-                    console.log(e);
-                    console.log("media source playing", video.readyState);
-                    // firefox issue here
-                    const play = await video.play();
-                    video.onwaiting = e => {
-                      console.log(e);
-                      video.onwaiting = null;
-                      video.ontimeupdate = null;
-                      sourceBuffer.onupdateend = e => {
-                        console.log(e);
-                        // console.log(mediaBuffer.byteLength, sourceBuffer.buffered.start(0), sourceBuffer.buffered.end(0));
-                        sourceBuffer.appendWindowStart = 0;
-                        sourceBuffer.appendWindowEnd = Infinity;
-                        resolveUpdatedMediaSource()
-                      }
-                      sourceBuffer.remove(0, mediaDuration);
-                      console.log(mediaSource);
-                    };
-                  }
+                  console.log(mediaDuration, mediaSource.duration, video.paused, video.ended, video.currentTime,
+                              e, "media source playing", video.readyState);
+
+                  video.play().then(resolveUpdatedMediaSource)
                 }
                 sourceBuffer.appendBuffer(mediaBuffer);
               })
             }
+            video.onwaiting = e => {
+              video.onwaiting = null;
+              console.log(e);
+              mediaSource.endOfStream()
+            }
 
-            mediaSource.endOfStream();
+            video.onended = (e) => {
+              video.onended = null;
+              console.log(e, video.currentTime,
+                mediaSource.duration);
+            }
 
           } else {
             console.warn(mimeCodec + " not supported");
@@ -367,3 +354,7 @@
 
       return recordedMedia
     };
+
+
+
+
