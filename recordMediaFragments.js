@@ -262,8 +262,7 @@
           console.log(recorder);
 
           recorder.ondataavailable = async(e) => {
-
-            // video.pause();
+              
             const mediaFragmentsRecording = {};
 
             mediaFragmentsRecording.mediaBlob = await setMediaMetadata(e.data);
@@ -294,12 +293,9 @@
           recorder.start();
         }
 
-
-
         video.oncanplay = (e) => {
           console.log(e);
         }
-
 
 
         video.src = URL.createObjectURL(mediaSource);
@@ -318,7 +314,7 @@
               of mediaFragments) {
               // for firefox
               if (!hasCaptureStream) {
-                // ctx.clearRect(0, 0, canvas.width, canvas.height)
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
               };
 
               await new Promise(resolveUpdatedMediaSource => {
