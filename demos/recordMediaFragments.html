@@ -43,7 +43,6 @@
       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4#t=0,5",
       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4#t=0,5",
       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6",
-
       "https://media.w3.org/2010/05/video/movie_300.mp4#t=30,36"
     ];
 
@@ -71,7 +70,6 @@
       "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=17,18",
       "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=18,19",
       "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=19,20"
-
     ];
 
     const mediaFragmentRecorder = async(urls) => {
@@ -253,6 +251,7 @@
           console.log(e, video.duration, video.buffered.end(0));
           video.play()
         }
+        // firefox issue
         video.onwaiting = e => {
             console.log(e, video.currentTime);
             if (HTMLMediaElement.prototype.hasOwnProperty("seekToNextFrame")) {
@@ -330,9 +329,7 @@
               }
               of mediaFragments) {
 
-
               await new Promise((resolveUpdatedMediaSource) => {
-
                 sourceBuffer.onupdateend = async(e) => {
                   sourceBuffer.onupdateend = null;
                   console.log(e, mediaDuration, mediaSource.duration, video.paused
