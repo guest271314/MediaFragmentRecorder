@@ -21,7 +21,6 @@ Usage:
     const hasCaptureStream = HTMLMediaElement.prototype.hasOwnProperty("captureStream");
 
     const captureStream = mediaElement =>
-      //HTMLMediaElement.prototype.hasOwnProperty("mozCaptureStream") 
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
 
     let currentFragmentURL, currentBlobURL, fragments;
@@ -31,19 +30,6 @@ Usage:
     videoStream.height = video.height;
 
     const mimeCodec = "video/webm;codecs=vp8,opus";
-
-    // https://gist.github.com/jsturgis/3b19447b304616f18657
-    // https://www.w3.org/2010/05/video/mediaevents.html
-
-    const multipleUrls = [
-      "https://media.w3.org/2010/05/sintel/trailer.mp4#t=0,5",
-      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=55,60",
-      "https://raw.githubusercontent.com/w3c/web-platform-tests/master/media-source/mp4/test.mp4#t=0,5",
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4#t=0,5",
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4#t=0,5",
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6",
-      "https://media.w3.org/2010/05/video/movie_300.mp4#t=30,36"
-    ];
 
     mediaFragmentRecorder(<URL string or array of URLs>)
     .then(recordedMediaFragments => {
