@@ -23,6 +23,7 @@
     const hasCaptureStream = HTMLMediaElement.prototype.hasOwnProperty("captureStream");
 
     const captureStream = mediaElement =>
+      //HTMLMediaElement.prototype.hasOwnProperty("mozCaptureStream") 
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
 
     let currentFragmentURL, currentBlobURL, fragments;
@@ -253,10 +254,6 @@
           // firefox issue
         video.onwaiting = e => {
             console.log(e, video.currentTime);
-            if (HTMLMediaElement.prototype.hasOwnProperty("seekToNextFrame")) {
-              // audio is not rendered
-              // video.seekToNextFrame()
-            }
           }
           // record `MediaSource` playback of recorded media fragments
         video.onplaying = async(e) => {
@@ -264,10 +261,7 @@
           video.onplaying = null;
 
           mediaStream = captureStream(video);
-          if (!hasCaptureStream) {
-            videoStream.srcObject = mediaStream;
-            videoStream.play();
-          }
+
           recorder = new MediaRecorder(mediaStream, {
             mimeType: mimeCodec
           });
