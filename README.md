@@ -32,7 +32,8 @@ Usage:
 
     const mimeCodec = "video/webm;codecs=vp8,opus";
 
-    // https://gist.github.com/jsturgis/3b19447b304616f18657// https://www.w3.org/2010/05/video/mediaevents.html
+    // https://gist.github.com/jsturgis/3b19447b304616f18657
+    // https://www.w3.org/2010/05/video/mediaevents.html
 
     const multipleUrls = [
       "https://media.w3.org/2010/05/sintel/trailer.mp4#t=0,5",
@@ -47,7 +48,9 @@ Usage:
     mediaFragmentRecorder(<URL string or array of URLs>)
     .then(recordedMediaFragments => {
       // `recordedMediaFragments` : array of objects : 
-      // `mediaBlob:Blob, mediaBuffer:ArrayBuffer, mediaFileName:<filename>, mediaDuration:<media duration>`,
+      // `mediaBlob:Blob, mediaBuffer:ArrayBuffer, 
+      // mediaFileName:<filename>, 
+      // mediaDuration:<media duration>`,
       // `mediaFragmentType`: <"singleMediaFragment" or "multipleMediaFragments">
       // do stuff with recorded media fragments
       console.log(recordedMediaFragments);
