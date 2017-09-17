@@ -201,16 +201,12 @@
             mediaSource.duration);
         }
         video.oncanplay = e => {
-          console.log(e, video.duration, video.buffered.end(0));
-          video.play()
-        }
-        // firefox issue
+            console.log(e, video.duration, video.buffered.end(0));
+            video.play()
+          }
+          // firefox issue
         video.onwaiting = e => {
             console.log(e, video.currentTime);
-            if (HTMLMediaElement.prototype.hasOwnProperty("seekToNextFrame")) {
-            // audio is not rendered
-            // video.seekToNextFrame()
-            }
           }
           // record `MediaSource` playback of recorded media fragments
         video.onplaying = async(e) => {
@@ -218,10 +214,7 @@
           video.onplaying = null;
 
           mediaStream = captureStream(video);
-          if (!hasCaptureStream) {
-            videoStream.srcObject = mediaStream;
-            videoStream.play();
-          }
+
           recorder = new MediaRecorder(mediaStream, {
             mimeType: mimeCodec
           });
@@ -229,7 +222,7 @@
 
           recorder.ondataavailable = async(e) => {
             console.log(e);
-     
+
             const mediaFragmentsRecording = {};
 
             mediaFragmentsRecording.mediaBlob = await setMediaMetadata(e.data);
@@ -270,6 +263,8 @@
 
         video.src = URL.createObjectURL(mediaSource);
 
+        let duration = 0;
+
         mediaSource.addEventListener("sourceopen", sourceOpen);
 
         async function sourceOpen(e) {
@@ -282,25 +277,23 @@
               }
               of mediaFragments) {
 
-            await new Promise((resolveUpdatedMediaSource) => {
-              sourceBuffer.onupdateend = async(e) => {
-                sourceBuffer.onupdateend = null;
-                console.log(e, mediaDuration, mediaSource.duration, video.paused
-                , video.ended, video.currentTime, "media source playing", video.readyState);
-                // https://bugzilla.mozilla.org/show_bug.cgi?id=1400587
-                // https://bugs.chromium.org/p/chromium/issues/detail?id=766002&q=label%3AMSEptsdtsCleanup
-                try {
-                  sourceBuffer.timestampOffset += sourceBuffer.buffered.end(0);
-                  resolveUpdatedMediaSource();
-                } 
-                catch (err) {
-                  console.error(err);
-                  resolveUpdatedMediaSource();
+              await new Promise(resolveUpdatedMediaSource => {
+                sourceBuffer.onupdateend = e => {
+                  sourceBuffer.onupdateend = null;
+                  console.log(e, mediaDuration, mediaSource.duration, video.paused, video.ended, video.currentTime, "media source playing", video.readyState);
+                  // https://bugzilla.mozilla.org/show_bug.cgi?id=1400587
+                  // https://bugs.chromium.org/p/chromium/issues/detail?id=766002&q=label%3AMSEptsdtsCleanup
+                  try {
+                    sourceBuffer.timestampOffset += sourceBuffer.buffered.end(0);
+                    resolveUpdatedMediaSource();
+                  } catch (err) {
+                    console.error(err);
+                    resolveUpdatedMediaSource();
+                  }
+
                 }
-                  
-              }
-              sourceBuffer.appendBuffer(mediaBuffer);
-            })
+                sourceBuffer.appendBuffer(mediaBuffer);
+              })
             }
 
             mediaSource.endOfStream()
@@ -315,10 +308,7 @@
       return recordedMedia
     };
 
-      })
 
-      return recordedMedia
-    };
 
 
 
