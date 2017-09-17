@@ -282,15 +282,21 @@
               }
               of mediaFragments) {
 
-
-              await new Promise((resolveUpdatedMediaSource) => {
-
+              await new Promise(resolveUpdatedMediaSource => {
                 sourceBuffer.onupdateend = async(e) => {
                   sourceBuffer.onupdateend = null;
                   console.log(e, mediaDuration, mediaSource.duration, video.paused
                   , video.ended, video.currentTime, "media source playing", video.readyState);
-
-                  resolveUpdatedMediaSource();
+                  try {
+                    sourceBuffer.timestampOffset += sourceBuffer.buffered.end(0);
+                    resolveUpdatedMediaSource();
+                  } catch (err) {
+                    // https://bugzilla.mozilla.org/show_bug.cgi?id=1400587
+                    // https://bugs.chromium.org/p/chromium/issues/detail?id=766002&q=label%3AMSEptsdtsCleanup
+                    console.error(err);
+                    resolveUpdatedMediaSource();
+                  }
+                  
                 }
                 sourceBuffer.appendBuffer(mediaBuffer);
               })
@@ -302,6 +308,11 @@
             console.warn(mimeCodec + " not supported");
           }
         };
+
+      })
+
+      return recordedMedia
+    };
 
       })
 
