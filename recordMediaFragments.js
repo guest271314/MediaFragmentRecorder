@@ -112,6 +112,12 @@
                 currentBlobURL = URL.createObjectURL(blob);
                 url = currentBlobURL + currentFragmentURL.hash;
               }
+                
+              // set hash of media fragment to `cursor`: last `.currentTime` of previous media fragment
+              if (cursor > 0) {
+                url = url.replace(/=\d+/, "=" + cursor);
+                console.log(url);
+              }
 
               videoStream.src = url;
             }).catch(err => err)
