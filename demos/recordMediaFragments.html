@@ -33,6 +33,8 @@
 
     const mimeCodec = "video/webm;codecs=vp8,opus";
 
+    let cursor = 0;
+
     // https://gist.github.com/jsturgis/3b19447b304616f18657
     // https://www.w3.org/2010/05/video/mediaevents.html
     const multipleUrls = [
@@ -110,8 +112,9 @@
               videoStream.oncanplay = async(e) => {
 
                 videoStream.oncanplay = null;
-                videoStream.play();
 
+                videoStream.play();
+                console.log(cursor, videoStream.currentTime);
                 mediaStream = captureStream(videoStream);
                 console.log(mediaStream);
 
@@ -158,7 +161,11 @@
                 currentBlobURL = URL.createObjectURL(blob);
                 url = currentBlobURL + currentFragmentURL.hash;
               }
-
+              // set hash of media fragment to `cursor`: last `.currentTime` of previous fragment
+              if (cursor > 0) {
+                url = url.replace(/=\d+/, "=" + cursor);
+                console.log(url)
+              }
               videoStream.src = url;
             }).catch(err => err)
           }
@@ -354,7 +361,7 @@
       return recordedMedia
     };
 
-    mediaFragmentRecorder(geckoUrl)
+    mediaFragmentRecorder(singleUrl)
       .then(recordedMediaFragments => {
         // do stuff with recorded media fragments
         console.log(recordedMediaFragments);
