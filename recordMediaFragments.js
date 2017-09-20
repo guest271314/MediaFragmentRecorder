@@ -15,6 +15,7 @@
     const hasCaptureStream = HTMLMediaElement.prototype.hasOwnProperty("captureStream");
 
     const captureStream = mediaElement =>
+      //HTMLMediaElement.prototype.hasOwnProperty("mozCaptureStream") 
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
 
     let currentFragmentURL, currentBlobURL, fragments;
@@ -24,6 +25,48 @@
     videoStream.height = video.height;
 
     const mimeCodec = "video/webm;codecs=vp8,opus";
+
+    let cursor = 0;
+
+    // https://gist.github.com/jsturgis/3b19447b304616f18657
+    // https://www.w3.org/2010/05/video/mediaevents.html
+    const multipleUrls = [
+      "https://media.w3.org/2010/05/sintel/trailer.mp4#t=0,5",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=55,60",
+      "https://raw.githubusercontent.com/w3c/web-platform-tests/master/media-source/mp4/test.mp4#t=0,5",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4#t=0,5",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4#t=0,5",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6",
+
+      "https://media.w3.org/2010/05/video/movie_300.mp4#t=30,36"
+    ];
+
+    const singleUrl = [
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=0,1",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=1,2",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=2,3",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=3,4",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=4,5",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=5,6",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=6,7",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=7,8",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=8,9",
+      "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4#t=9,10"
+    ];
+
+    const geckoUrl = [
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=10,11",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=11,12",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=12,13",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=13,14",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=14,15",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=15,16",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=16,17",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=17,18",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=18,19",
+      "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=19,20"
+
+    ];
 
     const mediaFragmentRecorder = async(urls) => {
       // `ts-ebml`
@@ -102,25 +145,28 @@
                   track.stop();
                 }
               }
-
+              currentFragmentURL = new URL(url);
               if (!hasCaptureStream) {
-                currentFragmentURL = new URL(url);
                 console.log(currentFragmentURL);
                 request = new Request(currentFragmentURL.href);
                 blob = await fetch(request).then(response => response.blob());
                 console.log(blob);
                 currentBlobURL = URL.createObjectURL(blob);
-                url = currentBlobURL + currentFragmentURL.hash;
-              }              
-              // set hash of media fragment to `cursor`: last `.currentTime` of previous media fragment
-              // don't set hash if `url` a different URL from previous media fragment
-              if (urls.indexOf(url) > 0 && new URL(urls[urls.indexOf(url) - 1]).origin === new URL(url).origin 
-                  && new URL(urls[urls.indexOf(url) - 1]).pathname === new URL(url).pathname) {
-                    if (cursor > 0) {
-                      url = url.replace(/=\d+/, "=" + cursor);
-                      console.log(url)
-                    }
+                if (urls.indexOf(currentFragmentURL.href) > 0 && new URL(urls[urls.indexOf(currentFragmentURL.href) - 1]).origin === currentFragmentURL.origin && new URL(urls[urls.indexOf(currentFragmentURL.href) - 1]).pathname === currentFragmentURL.pathname) {
+                  if (cursor > 0) {
+                    url = url = currentBlobURL + currentFragmentURL.hash.replace(/=\d+/, "=" + cursor);
+                    console.log(url)
+                  }
+                } else {
+                  url = currentBlobURL + currentFragmentURL.hash;
+                }
+              } else {
+                if (cursor > 0 && new URL(urls[urls.indexOf(url) - 1]).origin === currentFragmentURL.origin && new URL(urls[urls.indexOf(currentFragmentURL.href) - 1]).pathname === currentFragmentURL.pathname) {
+                  url = url.replace(/=\d+/, "=" + cursor);
+                  console.log(url)
+                }
               }
+
 
               videoStream.src = url;
             }).catch(err => err)
@@ -210,12 +256,15 @@
             mediaSource.duration);
         }
         video.oncanplay = e => {
-            console.log(e, video.duration, video.buffered.end(0));
-            video.play()
-          }
-          // firefox issue
+          console.log(e, video.duration, video.buffered.end(0));
+          video.play()
+        }
         video.onwaiting = e => {
             console.log(e, video.currentTime);
+            if (HTMLMediaElement.prototype.hasOwnProperty("seekToNextFrame")) {
+              // audio is not rendered
+              // video.seekToNextFrame()
+            }
           }
           // record `MediaSource` playback of recorded media fragments
         video.onplaying = async(e) => {
@@ -223,7 +272,10 @@
           video.onplaying = null;
 
           mediaStream = captureStream(video);
-
+          if (!hasCaptureStream) {
+            videoStream.srcObject = mediaStream;
+            videoStream.play();
+          }
           recorder = new MediaRecorder(mediaStream, {
             mimeType: mimeCodec
           });
@@ -272,8 +324,6 @@
 
         video.src = URL.createObjectURL(mediaSource);
 
-        let duration = 0;
-
         mediaSource.addEventListener("sourceopen", sourceOpen);
 
         async function sourceOpen(e) {
@@ -286,20 +336,22 @@
               }
               of mediaFragments) {
 
-              await new Promise(resolveUpdatedMediaSource => {
-                sourceBuffer.onupdateend = e => {
+
+              await new Promise((resolveUpdatedMediaSource) => {
+
+                sourceBuffer.onupdateend = async(e) => {
                   sourceBuffer.onupdateend = null;
                   console.log(e, mediaDuration, mediaSource.duration, video.paused, video.ended, video.currentTime, "media source playing", video.readyState);
+
                   // https://bugzilla.mozilla.org/show_bug.cgi?id=1400587
                   // https://bugs.chromium.org/p/chromium/issues/detail?id=766002&q=label%3AMSEptsdtsCleanup
                   try {
-                    sourceBuffer.timestampOffset += sourceBuffer.buffered.end(0);
+                    sourceBuffer.timestampOffset += mediaDuration;
                     resolveUpdatedMediaSource();
                   } catch (err) {
                     console.error(err);
                     resolveUpdatedMediaSource();
                   }
-
                 }
                 sourceBuffer.appendBuffer(mediaBuffer);
               })
