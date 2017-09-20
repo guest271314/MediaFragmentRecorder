@@ -114,9 +114,12 @@
               }
                 
               // set hash of media fragment to `cursor`: last `.currentTime` of previous media fragment
-              if (cursor > 0) {
-                url = url.replace(/=\d+/, "=" + cursor);
-                console.log(url);
+              if (urls.indexOf(url) > 0 && new URL(urls[urls.indexOf(url) - 1]).origin === new URL(url).origin 
+                  && new URL(urls[urls.indexOf(url) - 1]).pathname === new URL(url).pathname) {
+                    if (cursor > 0) {
+                      url = url.replace(/=\d+/, "=" + cursor);
+                      console.log(url)
+                    }
               }
 
               videoStream.src = url;
