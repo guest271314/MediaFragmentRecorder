@@ -15,7 +15,6 @@
     const hasCaptureStream = HTMLMediaElement.prototype.hasOwnProperty("captureStream");
 
     const captureStream = mediaElement =>
-      //HTMLMediaElement.prototype.hasOwnProperty("mozCaptureStream") 
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
 
     let currentFragmentURL, currentBlobURL, fragments;
