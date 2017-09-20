@@ -111,9 +111,9 @@
                 console.log(blob);
                 currentBlobURL = URL.createObjectURL(blob);
                 url = currentBlobURL + currentFragmentURL.hash;
-              }
-                
+              }              
               // set hash of media fragment to `cursor`: last `.currentTime` of previous media fragment
+              // don't set hash if `url` a different URL from previous media fragment
               if (urls.indexOf(url) > 0 && new URL(urls[urls.indexOf(url) - 1]).origin === new URL(url).origin 
                   && new URL(urls[urls.indexOf(url) - 1]).pathname === new URL(url).pathname) {
                     if (cursor > 0) {
