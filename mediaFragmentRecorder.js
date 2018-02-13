@@ -303,10 +303,11 @@
             fragments.onloadedmetadata = () => {
               fragments.onloadedmetadata = null;
               mediaFragmentsRecording.mediaDuration = fragments.duration;
-              // URL.revokeObjectURL(currentBlobURL);
+              
               // stop `MediaStreamTrack`s
               for (let track of mediaStream.getTracks()) {
                 track.stop();
+                URL.revokeObjectURL(currentBlobURL);
               }
               resolveAllMedia([
                 ...mediaFragments, mediaFragmentsRecording
