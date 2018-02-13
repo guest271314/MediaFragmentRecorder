@@ -23,6 +23,8 @@
 
     videoStream.height = video.height;
 
+    videoStream.crossOrigin = "anonymous";
+
     const mimeCodec = "video/webm;codecs=vp8,opus";
 
     let cursor = 0;
