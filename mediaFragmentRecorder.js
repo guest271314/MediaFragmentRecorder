@@ -1,5 +1,5 @@
-// recordMediaFragments.js 2017 guest271314
-// https://github.com/guest271314/recordMediaFragments
+// mediaFragmentRecorder.js 2017 guest271314
+// https://github.com/guest271314/MediaFragmentRecorder
 
 // https://github.com/guest271314/recordMediaFragments/blob/master/ts-ebml/ts-ebml-min.js
     const tsebml = require("ts-ebml");
