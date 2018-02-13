@@ -1,4 +1,4 @@
-# recordMediaFragments
+# MediaFragmentRecorder
 Record and set metadata of and concatenate media fragments in browser
 
 Motivation: [OfflineMediaContext](https://github.com/guest271314/OfflineMediaContext#offlinemediacontext), 
