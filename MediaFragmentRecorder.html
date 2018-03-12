@@ -158,8 +158,6 @@
               mediaSource.sourceBuffers[0].timestampOffset = video.currentTime;
               mediaSource.sourceBuffers[0].appendBuffer(chunks.shift());
             } else {
-              //video.removeEventListener("waiting", handleWaiting);
-              //console.log(video.currentTime, duration, mediaSource.duration);
               try {
                 if (recorder.state === "recording") {
                   recorder.stop();
