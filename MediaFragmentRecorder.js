@@ -1,6 +1,6 @@
       // https://github.com/guest271314/MediaFragmentRecorder/ 3-11-2018
       // https://github.com/w3c/media-source/issues/190
-      // Record media fragments of any MIME type to single video using HTMLMediaElement.captureStream(), MediaRecorder, and MediaSource
+      // Record media fragments to single video using HTMLMediaElement.captureStream(), MediaRecorder, and MediaSource
       const captureStream = mediaElement =>
         !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
       class MediaFragmentRecorder {
