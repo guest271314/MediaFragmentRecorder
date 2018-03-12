@@ -7,7 +7,6 @@
     <script>
       // https://github.com/guest271314/MediaFragmentRecorder/ 3-11-2018
       // https://github.com/w3c/media-source/issues/190
-      // Tested at Firefox Nightly 60
       const captureStream = mediaElement =>
         !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
       class MediaFragmentRecorder {
@@ -84,6 +83,7 @@
                   }, {
                     once: true
                   });
+
                 }, {
                   once: true
                 });
@@ -103,7 +103,7 @@
             }
           })()
         }
-      
+      }
       let urls = [{
         src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
         from: 0,
@@ -155,13 +155,12 @@
           const handleWaiting = e => {
             console.log(e, video.currentTime, recorder && recorder.state);
             if (chunks.length) {
-              mediaSource.sourceBuffers[0].abort();
+              // mediaSource.sourceBuffers[0].abort();
               mediaSource.sourceBuffers[0].timestampOffset = video.currentTime;
               mediaSource.sourceBuffers[0].appendBuffer(chunks.shift());
             } else {
-              video.removeEventListener("waiting", handleWaiting);
-              mediaSource.endOfStream();
-              console.log(video.currentTime, duration, mediaSource.duration);
+              //video.removeEventListener("waiting", handleWaiting);
+              //console.log(video.currentTime, duration, mediaSource.duration);
               try {
                 if (recorder.state === "recording") {
                   recorder.stop();
@@ -186,11 +185,6 @@
           });
           video.addEventListener("playing", e => {
             mediaStream = captureStream(video);
-            let [videoTrack] = mediaStream.getVideoTracks();
-            videoTrack.applyConstraints({
-              width,
-              height
-            });
             mediaStream.addEventListener("inactive", e => console.log(e));
             recorder = new MediaRecorder(mediaStream, {
               mimeType: "video/webm;codecs=vp8,opus"
@@ -205,6 +199,7 @@
             });
             recorder.addEventListener("stop", e => console.log(e));
             recorder.start();
+
             console.log(e, duration, video.buffered.end(0), video.seekable.end(0), video.duration, mediaSource.duration);
           }, {
             once: true
@@ -226,3 +221,6 @@
     </script>
   </body>
 </html>
+
+
+
