@@ -73,11 +73,7 @@
                     URL.revokeObjectURL(blobURL);
                   });
                   video.addEventListener("pause", e => {
-                    if (recorder.state === "recording") {
-                      recorder.stop();
-                    } else {
-                      recorder.requestData();
-                    }
+                    recorder.stop();
                     console.log(video.played.end(0) - video.played.start(0), video.currentTime - from, video.currentTime);
                     duration += video.currentTime - from;
                   }, {
