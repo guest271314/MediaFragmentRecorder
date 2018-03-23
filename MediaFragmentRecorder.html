@@ -156,7 +156,6 @@
                 if (recorder.state === "recording") {
                   recorder.stop();
                   video.removeEventListener("waiting", handleWaiting);
-                  // mediaSource.duration = video.currentTime;
                   mediaSource.endOfStream();
                   console.log(video.currentTime, duration, mediaSource.duration);
                 }
