@@ -147,9 +147,9 @@
           }
           const handleWaiting = e => {
             console.log(e, video.currentTime, recorder && recorder.state);
+            mediaSource.sourceBuffers[0].abort();
+            mediaSource.sourceBuffers[0].timestampOffset = video.currentTime;
             if (chunks.length) {
-              mediaSource.sourceBuffers[0].abort();
-              mediaSource.sourceBuffers[0].timestampOffset = video.currentTime;
               mediaSource.sourceBuffers[0].appendBuffer(chunks.shift());
             } else {
               try {
