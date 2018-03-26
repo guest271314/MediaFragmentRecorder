@@ -70,13 +70,16 @@
                     URL.revokeObjectURL(blobURL);
                   });
                   video.addEventListener("pause", e => {
-                    recorder.stop();
+                    if (recorder.state === "recording") {
+                      recorder.stop();
+                    } else {
+                      recorder.requestData();
+                    }
                     console.log(video.played.end(0) - video.played.start(0), video.currentTime - from, video.currentTime);
                     duration += video.currentTime - from;
                   }, {
                     once: true
                   });
-
                 }, {
                   once: true
                 });
