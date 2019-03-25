@@ -90,7 +90,7 @@
             }
           }));
 
-          const canvasStream = canvas.captureStream();
+          const canvasStream = canvas.captureStream(60);
           const context = new AudioContext();
           const mixedAudio = context.createMediaStreamDestination();
 
@@ -114,7 +114,15 @@
           source.connect(context.destination);
           source.connect(mixedAudio);
 
-          const recorder = new MediaRecorder(mediaStream);
+          const recorder = new MediaRecorder(mediaStream, {
+            mimeType: "video/webm;codecs=vp9,opus",
+            audioBitsPerSecond: 128000,
+            videoBitsPerSecond: 2500000
+          });
+
+          recorder.addEventListener("error", e => {
+            console.error(e)
+          });
 
           recorder.addEventListener("dataavailable", e => {
             console.log(e.data);
@@ -153,7 +161,7 @@
                 }
 
                 console.log(from, to);
-                // 1
+                // [1]
                 //if (index === urls.length - 1 && "mozCaptureStream" in video) {
                 //  to += 1;
                 //}
@@ -163,6 +171,7 @@
                 video.addEventListener("pause", e => {
                   playing = false;
                   resolve();
+                  console.log(video.currentTime);
                 }, {
                   once: true
                 });
@@ -193,7 +202,9 @@
             display.controls = true;
             display.addEventListener("canplaythrough", e => {
               display.play().catch(console.error)
-            }, {once: true});
+            }, {
+              once: true
+            });
             display.src = URL.createObjectURL(blob);
             document.body.appendChild(display);
           })
