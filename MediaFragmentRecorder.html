@@ -9,7 +9,7 @@
   <h1>click</h1>
   <script>
     // Based on approaches at https://stackoverflow.com/a/39302994, https://stackoverflow.com/a/45343042
-    // Firefox does not capture/record/output last 1 second of audio [1]
+    // Firefox 65 does not capture/record/output last 1 second of audio [1], see https://bugzilla.mozilla.org/show_bug.cgi?id=1539186
     /* 
        const captureStream = mediaElement =>
         !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
