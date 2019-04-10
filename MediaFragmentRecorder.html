@@ -144,9 +144,7 @@
               // Wait for both "track" events
               if (typeof tracks === "number" && ++tracks === 2) {
                 console.log(stream);
-                // Reassign stream to initial MediaStream reference;
-                // have only been able so far to get this working 
-                // within "track" event referencing the stream property of the event
+                // Reassign stream to initial MediaStream reference
                 mediaStream = stream;
                 // set video srcObject to reassigned MediaStream
                 video.srcObject = mediaStream;
