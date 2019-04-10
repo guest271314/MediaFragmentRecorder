@@ -225,12 +225,11 @@
           .forEach(track => {
             track.stop();
             track.enabled = false;
+            console.log(track);
           });
 
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
-          
-          console.log(audioTrack, videoTrack, ...mediaStream.getTracks());
 
           let blob = await promiseResult;
 
