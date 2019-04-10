@@ -201,6 +201,11 @@
                 console.log(playlistVideoTrack.getSettings());
                 // Replace audio and video MediaStreamTrack with a new media resource
                 // id of the initial MediaStreamTrack does not change
+                // replaceTrack() 6.4.3 https://w3c.github.io/webrtc-pc/#dom-rtcrtpsender-replacetrack
+                // "If sending is true, and withTrack is not null, 
+                // have the sender switch seamlessly to transmitting withTrack 
+                // instead of the sender's existing track." 
+                // 
                 await videoSender.replaceTrack(playlistVideoTrack);
                 await audioSender.replaceTrack(playlistAudioTrack);
 
