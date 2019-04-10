@@ -73,7 +73,8 @@
         const blob = await request.blob();
         const blobURL = URL.createObjectURL(blob);
         blobURLS.push(blobURL);
-        return `${blobURL}#t=${from},${to}`;
+        const url = new URL(src);
+        return  blobURL + url.hash || "#t=" + from + "," + to;
       } catch (e) {
         throw e;;
       }
