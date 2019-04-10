@@ -74,7 +74,8 @@
         const blobURL = URL.createObjectURL(blob);
         blobURLS.push(blobURL);
         const url = new URL(src);
-        return  blobURL + url.hash || "#t=" + from + "," + to;
+        console.log(url.hash);
+        return  blobURL + (url.hash || `#t=${from},${to}`);
       } catch (e) {
         throw e;;
       }
@@ -220,13 +221,21 @@
           }
           recorder.stop();
           blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
-          mediaStream.getTracks().forEach(track => track.stop());
-          [audioTrack, videoTrack].forEach(track => track.stop());
+          [audioTrack, videoTrack, ...mediaStream.getTracks()]
+          .forEach(track => {
+            track.stop();
+            track.enabled = false;
+          });
+
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
+          
+          console.log(audioTrack, videoTrack, ...mediaStream.getTracks());
+
           let blob = await promiseResult;
 
           console.log(blob);
+          
           video.remove();
           playlist.remove();
           const videoStream = document.createElement("video");
