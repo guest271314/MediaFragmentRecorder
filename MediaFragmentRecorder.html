@@ -115,7 +115,7 @@
           source.connect(mixedAudio);
 
           const recorder = new MediaRecorder(mediaStream, {
-            mimeType: "video/webm;codecs=vp9,opus",
+            mimeType: "video/webm;codecs=vp8,opus",
             audioBitsPerSecond: 128000,
             videoBitsPerSecond: 2500000
           });
