@@ -99,7 +99,6 @@ document.getElementById("click")
       try {
         await videoTrack.applyConstraints(videoConstraints);
       } catch (e) {
-
         console.error(e, e.name === "OverconstrainedError");
       }
 
