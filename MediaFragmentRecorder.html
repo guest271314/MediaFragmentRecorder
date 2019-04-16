@@ -6,9 +6,6 @@
 </head>
 <body>
   <h1 id="click">click</h1>
-  <!--
-  <video id="video" src="" controls="true" autoplay="true"></video>
-  -->
   <video id="playlist" src="" controls="true" autoplay="true"></video>
   <script>
     const captureStream = mediaElement =>
@@ -79,10 +76,6 @@
     let playlist = document.getElementById("playlist");
     playlist.width = width;
     playlist.height = height;
-    // const video = document.getElementById("video");
-    // video.width = width;
-    // video.height = height;
-    // const chunks = [];
     let recorder;
     let resolveResult;
     let result;
@@ -145,9 +138,6 @@
                 mediaStream.getTracks().forEach(track => track.stop);
                 // Reassign stream to initial MediaStream reference                                                           
                 mediaStream = stream;
-                // set video srcObject to reassigned MediaStream
-                // video.srcObject = mediaStream;
-                tracks = void 0;
                 resolve();
               }
             });
@@ -200,7 +190,7 @@
                 await audioSender.replaceTrack(playlistAudioTrack);
                 if (!recorder) {
                   // Chromium outputs Blob with size 0 Blob {size: 0, type: "video/webm;codecs=vp8,opus"}
-                  // if mediaStream is not attached to a <video> element
+                  // if mediaStream is not attached to a <video> element, set srcObject to a <video> element
                   // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
                   if (!playlist.mozCaptureStream) {
                     playlist.cloneNode(true).srcObject = mediaStream;
@@ -250,7 +240,7 @@
                 }
                 // Firefox 68 does not populate MediaStream with audio and video MediaStreamTrack
                 // when src is set to different media resource then mozCaptureStream()
-                // executed on same <video> element 
+                // executed on same <video> element, remove <video> element, create new <video> element
                 // https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
                 playlist.remove();
                 playlist = document.createElement("video");
