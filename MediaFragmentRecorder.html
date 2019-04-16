@@ -219,9 +219,6 @@
                   recorder.addEventListener("dataavailable", e => {
                     console.log(e.data);
                     result = e.data;
-                    // if (e.data.size > 0) {
-                    //  chunks.push(e.data);
-                    // }
                   });
                   recorder.addEventListener("error", e => {
                     console.log(e);
@@ -233,7 +230,7 @@
                 if (recorder.state === "inactive") {
                   console.log(playlist.readyState);
                   try {
-                    recorder.start(); // 1000 / videoConstraints.frameRate
+                    recorder.start(); 
                   } catch (e) {
                     console.error(e);
                   }
@@ -250,6 +247,10 @@
                 if (recorder.state === "recording") {
                   recorder.pause();
                 }
+                // Remove current <video> element, create new <video> element
+                // to get audio and video MediaStreamTrack at next mozCaptureStream()
+                // after setting src to different media resource
+                // Firefox 68 https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
                 playlist.remove();
                 playlist = document.createElement("video");
                 playlist.width = width;
@@ -277,14 +278,13 @@
           toLocalPeerConnection.close();
 
           console.log(blob);
-          // video.remove();
+          
           playlist.remove();
           const videoStream = document.createElement("video");
           videoStream.width = width;
           videoStream.height = height;
           videoStream.controls = true;
           document.body.appendChild(videoStream);
-          // new File(blobs, "mediaFragments.webm", {type:recorder.mimeType});
           videoStream.src = URL.createObjectURL(blob);
         } catch (e) {
           console.error(e);
