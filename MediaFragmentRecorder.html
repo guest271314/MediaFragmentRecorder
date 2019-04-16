@@ -201,6 +201,7 @@
                 if (!recorder) {
                   // Chromium outputs Blob with size 0 Blob {size: 0, type: "video/webm;codecs=vp8,opus"}
                   // if mediaStream is not attached to a <video> element
+                  // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
                   if (!playlist.mozCaptureStream) {
                     playlist.cloneNode(true).srcObject = mediaStream;
                   }
@@ -247,10 +248,10 @@
                 if (recorder.state === "recording") {
                   recorder.pause();
                 }
-                // Remove current <video> element, create new <video> element
-                // to get audio and video MediaStreamTrack at next mozCaptureStream()
-                // after setting src to different media resource
-                // Firefox 68 https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
+                // Firefox 68 does not populate MediaStream with audio and video MediaStreamTrack
+                // when src is set to different media resource then mozCaptureStream()
+                // executed on same <video> element 
+                // https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
                 playlist.remove();
                 playlist = document.createElement("video");
                 playlist.width = width;
