@@ -124,18 +124,18 @@
             console.log(e);
           });
           const mediaStreamTrackPromise = new Promise(resolve => {
-            toLocalPeerConnection.addEventListener("track", track => {
-              console.log("track event", track);
+            toLocalPeerConnection.addEventListener("track", event => {
+              event.track.addEventListener("unmute", e => console.log(e));
+              console.log("track event", event);
               kinds.splice(kinds.findIndex(({
                 kind
-              }) => kind === track.kind), 1);
+              }) => kind === event.track.kind), 1);
               // Wait for both "track" events
               if (kinds.length === 0) {
                 const {
                   streams: [stream]
-                } = track;
+                } = event;
                 console.log(stream);
-                mediaStream.getTracks().forEach(track => track.stop);
                 // Reassign stream to initial MediaStream reference                                                           
                 mediaStream = stream;
                 resolve();
