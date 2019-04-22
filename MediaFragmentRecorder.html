@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Record media fragments to single webm video using RTCPeerConnection(), RTCRtpSender.replaceTrack(), MediaRecorder()</title>
   <!-- https://bugzilla.mozilla.org/show_bug.cgi?id=1542616; https://bugzilla.mozilla.org/show_bug.cgi?id=1544234 -->
 </head>
+
 <body>
   <h1 id="click">click</h1>
   <video id="playlist" src="" controls="true" autoplay="true"></video>
@@ -125,7 +127,10 @@
           const unmutePromises = [];
           const mediaStreamTrackPromise = new Promise(resolve => {
             toLocalPeerConnection.addEventListener("track", event => {
-              unmutePromises.push(new Promise(res => event.track.addEventListener("unmute", e => { console.log(e); res() })));
+              unmutePromises.push(new Promise(res => event.track.addEventListener("unmute", e => {
+                console.log(e);
+                res()
+              })));
               console.log("track event", event);
               kinds.splice(kinds.findIndex(({
                 kind
@@ -167,7 +172,8 @@
           console.log(audioSender, videoSender, mediaStream);
           for (const blobURL of media) {
             await new Promise(async resolve => {
-              playlist.addEventListener("playing", async e => {
+
+              playlist.addEventListener("play", async e => {
                 console.log(e, e.target.readyState);
                 const stream = captureStream(playlist);
                 const [playlistVideoTrack] = stream.getVideoTracks();
@@ -221,7 +227,7 @@
                 if (recorder.state === "inactive") {
                   console.log(playlist.readyState);
                   try {
-                    recorder.start(); 
+                    recorder.start();
                   } catch (e) {
                     console.error(e);
                   }
@@ -235,6 +241,7 @@
                 once: true
               });
               playlist.addEventListener("pause", e => {
+                console.log(e);
                 if (recorder.state === "recording") {
                   recorder.pause();
                 }
@@ -267,9 +274,14 @@
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
           console.log(blob);
-          
+
           playlist.remove();
           const videoStream = document.createElement("video");
+          videoStream.addEventListener("canplaythrough", e => {
+            // Firefox 68 40.5 40.5
+            // Chromium 73 41.5 41.5
+            console.log(videoStream.duration, videoStream.seekable.end(0));
+          });
           videoStream.width = width;
           videoStream.height = height;
           videoStream.controls = true;
