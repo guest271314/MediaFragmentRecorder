@@ -94,7 +94,6 @@
           let mediaStream = new MediaStream([videoTrack, audioTrack]);
           console.log("initial MediaStream, audio and video MediaStreamTracks", mediaStream, mediaStream.getTracks());
           let tracks = 0;
-
           const fromLocalPeerConnection = new RTCPeerConnection();
           const toLocalPeerConnection = new RTCPeerConnection();
           const fromConnection = new Promise(resolve => fromLocalPeerConnection.addEventListener("icecandidate", async e => {
@@ -123,9 +122,10 @@
           toLocalPeerConnection.addEventListener("negotiationneeded", e => {
             console.log(e);
           });
+          const unmutePromises = [];
           const mediaStreamTrackPromise = new Promise(resolve => {
             toLocalPeerConnection.addEventListener("track", event => {
-              event.track.addEventListener("unmute", e => console.log(e));
+              unmutePromises.push(new Promise(res => event.track.addEventListener("unmute", e => { console.log(e); res() })));
               console.log("track event", event);
               kinds.splice(kinds.findIndex(({
                 kind
@@ -152,7 +152,6 @@
           await fromLocalPeerConnection.setRemoteDescription(answer);
           await toLocalPeerConnection.setLocalDescription(fromLocalPeerConnection.remoteDescription);
           let media = await urls;
-
           await fromConnection;
           await toConnection;
           await mediaStreamTrackPromise;
@@ -195,6 +194,7 @@
                   if (!playlist.mozCaptureStream) {
                     playlist.cloneNode(true).srcObject = mediaStream;
                   }
+                  await Promise.all(unmutePromises);
                   recorder = new MediaRecorder(mediaStream, {
                     mimeType: "video/webm;codecs=vp8,opus",
                     audioBitsPerSecond: 128000,
@@ -257,7 +257,6 @@
           }
           recorder.stop();
           let blob = await promiseResult;
-
           blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
           [audioTrack, videoTrack, ...mediaStream.getTracks()]
           .forEach(track => {
@@ -267,7 +266,6 @@
           });
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
-
           console.log(blob);
           
           playlist.remove();
