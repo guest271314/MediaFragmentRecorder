@@ -35,9 +35,9 @@
       from: 0,
       to: 4
     }, {
+      src: "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=10,20",
       from: 10,
-      to: 20,
-      src: "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=10,20"
+      to: 20
     }, {
       from: 55,
       to: 60,
@@ -129,7 +129,7 @@
             toLocalPeerConnection.addEventListener("track", event => {
               unmutePromises.push(new Promise(res => event.track.addEventListener("unmute", e => {
                 console.log(e);
-                res()
+                res(e.target)
               })));
               console.log("track event", event);
               kinds.splice(kinds.findIndex(({
@@ -161,16 +161,18 @@
           await toConnection;
           await mediaStreamTrackPromise;
           // Firefox 68 Only first frame of first fragment is recorded 
-          // copy, unshift and play 0.2 second media fragment of first video in media array
+          // copy, unshift and play 0.375 second media fragment of first video in media array
           // following SecurityError: The operation is insecure. at MediaRecorder.start()
           // play full media fragment at index 1 of media array (copied to index 0)
-          // adds 1-2 seconds to resulting webm file
           if (!!playlist.mozCaptureStream) {
-            media.unshift(media[0].replace(/#.+$/, "#t=0,0.2"));
+            media.unshift(media[0].replace(/#.+$/, "#t=0,0.375"));
             console.log(media);
           }
           console.log(audioSender, videoSender, mediaStream);
-          for (const blobURL of media) {
+          Promise.all(unmutePromises)
+          .then(tracks => console.log("unmute event", tracks), console.error);
+          
+          for (const [index, blobURL] of media.entries()) {
             await new Promise(async resolve => {
 
               playlist.addEventListener("play", async e => {
@@ -199,8 +201,7 @@
                   // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
                   if (!playlist.mozCaptureStream) {
                     playlist.cloneNode(true).srcObject = mediaStream;
-                  }
-                  await Promise.all(unmutePromises);
+                  }                
                   recorder = new MediaRecorder(mediaStream, {
                     mimeType: "video/webm;codecs=vp8,opus",
                     audioBitsPerSecond: 128000,
@@ -224,7 +225,7 @@
                     console.log(e);
                   });
                 }
-                if (recorder.state === "inactive") {
+                if (recorder && recorder.state === "inactive") {
                   console.log(playlist.readyState);
                   try {
                     recorder.start();
@@ -235,8 +236,9 @@
                   if (recorder.state === "paused") {
                     recorder.resume();
                   }
+                  console.log(recorder.state, recorder.stream.getTracks());
                 }
-                console.log(recorder.state, recorder.stream.getTracks());
+                
               }, {
                 once: true
               });
