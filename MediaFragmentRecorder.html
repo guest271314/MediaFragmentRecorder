@@ -1,85 +1,50 @@
-
 <!DOCTYPE html>
 <html>
 
 <head>
-  <title>Record media fragments to single webm video using AudioCAudioContext.createMediaStreamDestination(), canvas.captureStream(), PeerConnection(), RTCRtpSender.replaceTrack(), MediaRecorder()</title>
-  
-  <!--
-  Try to achieve requirement using only native browser API, without any libraries
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/6.4.0/adapter.min.js"></script>
-  -->
-  <!-- 
-    Without using adapter.js at Chromium if {once: true} is not used at "icecandidate" event
-
-    Uncaught (in promise) TypeError: Failed to execute 'addIceCandidate' on 'RTCPeerConnection': Candidate missing values for both sdpMid and sdpMLineIndex
-    at RTCPeerConnection.
-    Uncaught (in promise) TypeError: Failed to execute 'addIceCandidate' on 'RTCPeerConnection': Candidate missing values for both sdpMid and sdpMLineIndex
-    at RTCPeerConnection.
-  -->
-  <!-- Without using adapter.js at Firefox
-
-    SecurityError: The operation is insecure. debugger eval code:152
-    mediaStreamTrackPromise debugger eval code:152
-    dispatchEvent resource://gre/modules/media/PeerConnection.jsm:707
-    _processTrackAdditionsAndRemovals resource://gre/modules/media/PeerConnection.jsm:1324
-    onSetRemoteDescriptionSuccess resource://gre/modules/media/PeerConnection.jsm:1661
-    haveSetRemote resource://gre/modules/media/PeerConnection.jsm:1032
-    haveSetRemote resource://gre/modules/media/PeerConnection.jsm:1029
-    AsyncFunctionNext self-hosted:839
-
-    at `resolve()`
-
-   -->
-  <!-- 
-    With using adapter.js at Firefox even with {once: true} set at "icecandidate" event
-
-    from 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-Tc5OsSypnNbxzidJ:114:21
-    from 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-    Tc5OsSypnNbxzidJ:114:21
-    from 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-Tc5OsSypnNbxzidJ:114:21
-    from 
-icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-Tc5OsSypnNbxzidJ:114:21
-    from 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-Tc5OsSypnNbxzidJ:114:21
-    from 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, composed: false, … }
-Tc5OsSypnNbxzidJ:114:21
-    to 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-Tc5OsSypnNbxzidJ:123:21
-    to 
-icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-Tc5OsSypnNbxzidJ:123:21
-    to 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, candidate: RTCIceCandidate, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, … }
-Tc5OsSypnNbxzidJ:123:21
-    to 
-    icecandidate { target: RTCPeerConnection, isTrusted: true, srcElement: RTCPeerConnection, currentTarget: RTCPeerConnection, eventPhase: 2, bubbles: false, cancelable: false, returnValue: true, defaultPrevented: false, composed: false, … }
-Tc5OsSypnNbxzidJ:123:21
-  -->
-
+  <title>Record media fragments to single webm video using RTCPeerConnection(), RTCRtpSender.replaceTrack(), MediaRecorder()</title>
+  <!-- https://bugzilla.mozilla.org/show_bug.cgi?id=1542616; https://bugzilla.mozilla.org/show_bug.cgi?id=1544234 -->
 </head>
 
 <body>
   <h1 id="click">click</h1>
-  <video id="video" src="" controls="true" autoplay="true"></video>
-  <video id="playlist" src="" controls="true" muted="true"></video>
+  <video id="playlist" src="" controls="true" autoplay="true"></video>
   <script>
     const captureStream = mediaElement =>
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
+    const createMediaStreamTracks = _ => {        
+        const audioContext = new AudioContext();
+        const gainNode = audioContext.createGain();
+        const oscillator = audioContext.createOscillator();
+        oscillator.frequency.value = 0;
+        const audioStreamDestination = audioContext.createMediaStreamDestination();
+        const mediaStream = audioStreamDestination.stream;
+        const [audioTrack] = mediaStream.getAudioTracks();
+        gainNode.gain.value = 1;
+        oscillator.connect(gainNode).connect(audioContext.destination);
+        oscillator.start();
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const canvasStream = canvas.captureStream(0);
+        const [videoTrack] = canvasStream.getVideoTracks();
+        mediaStream.addTrack(videoTrack);
+        let raf;
+        const draw = async () => {
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, width, height);
+          requestFrame();
+          requestAnimationFrame(draw)
+        };
+        console.log(canvasStream.requestFrame);
+        const requestFrame = _ => canvasStream.requestFrame ? canvasStream.requestFrame() : videoTrack.requestFrame();
+        raf = requestAnimationFrame(draw);
+        return {mediaStream, audioContext, raf};
+    }
 
     const width = 320;
     const height = 240;
     const videoConstraints = {
-      frameRate: 60,
+      frameRate: 30,
       resizeMode: "crop-and-scale",
       width,
       height
@@ -90,9 +55,9 @@ Tc5OsSypnNbxzidJ:123:21
       from: 0,
       to: 4
     }, {
+      src: "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=10,20",
       from: 10,
-      to: 20,
-      src: "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=10,20"
+      to: 20
     }, {
       from: 55,
       to: 60,
@@ -123,113 +88,81 @@ Tc5OsSypnNbxzidJ:123:21
         const blob = await request.blob();
         const blobURL = URL.createObjectURL(blob);
         blobURLS.push(blobURL);
-        return `${blobURL}#t=${from},${to}`;
+        const url = new URL(src);
+        console.log(url.hash);
+        return blobURL + (url.hash || `#t=${from},${to}`);
       } catch (e) {
         throw e;;
       }
     }));
-
-
-    const playlist = document.getElementById("playlist");
+    let playlist = document.getElementById("playlist");
     playlist.width = width;
     playlist.height = height;
-
-    const video = document.getElementById("video");
-    video.width = width;
-    video.height = height;
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = width;
-    canvas.height = height;
-
     let recorder;
     let resolveResult;
+    let result;
     const promiseResult = new Promise(resolve => resolveResult = resolve);
-
     document.getElementById("click")
-      .onclick = e =>
-      (async() => {
+      .addEventListener("click", async e => {
         try {
-          // create MediaStream, audio and video MediaStreamTrack
-          const audioContext = new AudioContext();
-          const audioContextDestination = audioContext.createMediaStreamDestination();
-          let mediaStream = audioContextDestination.stream;
-          const [audioTrack] = mediaStream.getAudioTracks();
-          const [videoTrack] = canvas.captureStream().getVideoTracks();
-          // apply same constraints
-          videoTrack.applyConstraints(videoConstraints);
-          mediaStream.addTrack(videoTrack);
-
+          // create audio and video MediaStreamTrack
+          let {mediaStream, raf, audioContext} = createMediaStreamTracks();
+          const [videoTrack, audioTrack] = [mediaStream.getVideoTracks()[0], mediaStream.getAudioTracks()[0]];
+          try {
+            await videoTrack.applyConstraints(videoConstraints);
+          } catch (e) {
+            console.error(e, e.name === "OverconstrainedError");
+          }
+          // let mediaStream = new MediaStream([videoTrack, audioTrack]);
           console.log("initial MediaStream, audio and video MediaStreamTracks", mediaStream, mediaStream.getTracks());
-
           let tracks = 0;
-
           const fromLocalPeerConnection = new RTCPeerConnection();
           const toLocalPeerConnection = new RTCPeerConnection();
-
-          fromLocalPeerConnection.addEventListener("icecandidate", async e => {
+          const fromConnection = new Promise(resolve => fromLocalPeerConnection.addEventListener("icecandidate", async e => {
             console.log("from", e);
             try {
-              await toLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null);
+              resolve(toLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null));
             } catch (e) {
               console.error(e);
             }
           }, {
             once: true
-          });
-
-          toLocalPeerConnection.addEventListener("icecandidate", async e => {
+          }));
+          const toConnection = new Promise(resolve => toLocalPeerConnection.addEventListener("icecandidate", async e => {
             console.log("to", e);
             try {
-              await fromLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null);
+              resolve(fromLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null));
             } catch (e) {
               console.error(e);
             }
           }, {
             once: true
-          });
+          }));
           fromLocalPeerConnection.addEventListener("negotiationneeded", e => {
             console.log(e);
           });
           toLocalPeerConnection.addEventListener("negotiationneeded", e => {
             console.log(e);
           });
+          const unmutePromises = [];
           const mediaStreamTrackPromise = new Promise(resolve => {
-            toLocalPeerConnection.addEventListener("track", track => {
-              console.log("track event", track);
-              const {
-                streams: [stream]
-              } = track;
-              console.log(tracks, stream.getTracks().length);
+            toLocalPeerConnection.addEventListener("track", event => {
+              unmutePromises.push(new Promise(res => event.track.addEventListener("unmute", e => {
+                console.log(e);
+                res(e.target)
+              })));
+              console.log("track event", event);
+              kinds.splice(kinds.findIndex(({
+                kind
+              }) => kind === event.track.kind), 1);
               // Wait for both "track" events
-              if (typeof tracks === "number" && ++tracks === 2) {
+              if (kinds.length === 0) {
+                const {
+                  streams: [stream]
+                } = event;
                 console.log(stream);
-                // Reassign stream to initial MediaStream reference;
-                // have only been able so far to get this working 
-                // within "track" event referencing the stream property of the event
+                // Reassign stream to initial MediaStream reference                                                           
                 mediaStream = stream;
-                // set video srcObject to reassigned MediaStream
-                video.srcObject = mediaStream;
-                tracks = void 0;
-                let result;
-                recorder = new MediaRecorder(stream, {
-                  mimeType: "video/webm;codecs=vp8,opus",
-                  audioBitsPerSecond: 128000,
-                  videoBitsPerSecond: 2500000
-                });
-                recorder.addEventListener("start", e => {
-                  console.log(e);
-                });
-                recorder.addEventListener("stop", e => {
-                  console.log(e);
-                  resolveResult(result);
-                });
-                recorder.addEventListener("dataavailable", e => {
-                  console.log(e);
-                  result = e.data;
-                });
-                recorder.start();
                 resolve();
               }
             });
@@ -243,33 +176,96 @@ Tc5OsSypnNbxzidJ:123:21
           const answer = await toLocalPeerConnection.createAnswer();
           await fromLocalPeerConnection.setRemoteDescription(answer);
           await toLocalPeerConnection.setLocalDescription(fromLocalPeerConnection.remoteDescription);
-          const media = await urls;
+          let media = await urls;
+          await fromConnection;
+          await toConnection;
           await mediaStreamTrackPromise;
-
           console.log(audioSender, videoSender, mediaStream);
-
-          for (const blobURL of media) {
+          await Promise.all(unmutePromises);
+          for (const [index, blobURL] of media.entries()) {
             await new Promise(async resolve => {
-              playlist.addEventListener("canplay", async e => {
-                console.log(e);
-                await playlist.play();
+              playlist.addEventListener("play", async e => {
+                console.log(e, e.target.readyState);
                 const stream = captureStream(playlist);
                 const [playlistVideoTrack] = stream.getVideoTracks();
                 const [playlistAudioTrack] = stream.getAudioTracks();
                 // Apply same constraints on each video MediaStreamTrack
-                playlistVideoTrack.applyConstraints(videoConstraints);
+                try {
+                  await playlistVideoTrack.applyConstraints(videoConstraints);
+                } catch (e) {
+                  console.error(e, e.name === "OverconstrainedError");
+                }
+                console.log(playlistVideoTrack.getSettings());
                 // Replace audio and video MediaStreamTrack with a new media resource
+                // id of the initial MediaStreamTrack does not change
+                // replaceTrack() 6.4.3 https://w3c.github.io/webrtc-pc/#dom-rtcrtpsender-replacetrack
+                // "If sending is true, and withTrack is not null, 
+                // have the sender switch seamlessly to transmitting withTrack 
+                // instead of the sender's existing track." 
                 await videoSender.replaceTrack(playlistVideoTrack);
                 await audioSender.replaceTrack(playlistAudioTrack);
-
-                console.log(recorder.state, recorder.stream.getTracks());
+                if (!recorder) {
+                  // Chromium outputs Blob with size 0 Blob {size: 0, type: "video/webm;codecs=vp8,opus"}
+                  // if mediaStream is not attached to a <video> element, set srcObject to a <video> element
+                  // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
+                  if (!playlist.mozCaptureStream) {
+                    playlist.cloneNode(true).srcObject = mediaStream;
+                  }                
+                  recorder = new MediaRecorder(mediaStream, {
+                    mimeType: "video/webm;codecs=vp8,opus",
+                    audioBitsPerSecond: 128000,
+                    videoBitsPerSecond: 2500000
+                  });
+                  recorder.addEventListener("start", e => {
+                    console.log(e);
+                  });
+                  recorder.addEventListener("stop", e => {
+                    console.log(e);
+                    resolveResult(result);
+                  });
+                  recorder.addEventListener("dataavailable", e => {
+                    console.log(e.data);
+                    result = e.data;
+                  });
+                  recorder.addEventListener("error", e => {
+                    console.log(e);
+                  });
+                  recorder.addEventListener("pause", e => {
+                    console.log(e);
+                  });
+                }
+                if (recorder && recorder.state === "inactive") {
+                  console.log(playlist.readyState);
+                  try {
+                    recorder.start();
+                  } catch (e) {
+                    console.error(e);
+                  }
+                } else {
+                  if (recorder.state === "paused") {
+                    recorder.resume();
+                  }
+                  console.log(recorder.state, recorder.stream.getTracks());
+                }
+                
               }, {
                 once: true
               });
-
-              playlist.addEventListener("pause", async e => {
-                // await audioSender.replaceTrack(audioTrack);
-                // await videoSender.replaceTrack(videoTrack);
+              playlist.addEventListener("pause", e => {
+                console.log(e);
+                if (recorder.state === "recording") {
+                  recorder.pause();
+                }
+                // Firefox 68 does not populate MediaStream with audio and video MediaStreamTrack
+                // when src is set to different media resource then mozCaptureStream()
+                // executed on same <video> element, remove <video> element, create new <video> element
+                // https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
+                playlist.remove();
+                playlist = document.createElement("video");
+                playlist.width = width;
+                playlist.height = height;
+                playlist.autoplay = true;
+                document.body.appendChild(playlist);
                 resolve();
               }, {
                 once: true
@@ -278,29 +274,36 @@ Tc5OsSypnNbxzidJ:123:21
             });
           }
           recorder.stop();
+          let blob = await promiseResult;
+          cancelAnimationFrame(raf);
+          await audioContext.close();
           blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
-          mediaStream.getTracks().forEach(track => track.stop());
-          [audioTrack, videoTrack].forEach(track => track.stop());
+          [audioTrack, videoTrack, ...mediaStream.getTracks()]
+          .forEach(track => {
+            track.stop();
+            track.enabled = false;
+            console.log(track);
+          });
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
-          return await promiseResult;
+          console.log(blob);
+          playlist.remove();
+          const videoStream = document.createElement("video");
+          videoStream.addEventListener("canplaythrough", e => {
+            console.log(videoStream.duration, videoStream.seekable.end(0));
+          });
+          videoStream.width = width;
+          videoStream.height = height;
+          videoStream.controls = true;
+          document.body.appendChild(videoStream);
+          videoStream.src = URL.createObjectURL(blob);
         } catch (e) {
-          throw e;
-        }
-      })()
-      .then(blob => {
-        console.log(blob);
-        video.remove();
-        playlist.remove();
-        const videoStream = document.createElement("video");
-        videoStream.width = width;
-        videoStream.height = height;
-        videoStream.controls = true;
-        document.body.appendChild(videoStream);
-        videoStream.src = URL.createObjectURL(blob);
-      })
-      .catch(console.error);
+          console.error(e);
+          console.trace();
+        };
+      }, {
+        once: true
+      });
   </script>
 </body>
-
 </html>
