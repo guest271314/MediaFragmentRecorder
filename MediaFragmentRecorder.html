@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <title>Record media fragments to single webm video using getDisplayMedia(), AudioContext(), window.open(), MediaRecorder()</title>
 </head>
-
 <body>
   <h1 id="click">open window</h1>
   <script>
@@ -12,6 +10,7 @@
     const go = ({
         width = 320, height = 240
       } = {}) => (async() => {
+        click.textContent = "fetching media resources";
         const html = `<!DOCTYPE html>
                         <html>
                           <head>
@@ -28,7 +27,7 @@
                           </body>
                         </html>`;
 
-        const blob_url = URL.createObjectURL(new Blob([html], {
+        const blobURL = URL.createObjectURL(new Blob([html], {
           type: "text/html"
         }));
 
@@ -37,7 +36,7 @@
         // add 30 to height for Chromium 73 to not record title and location bar
         // Firefox 68 records location bar using the same code
         // TODO: adjust to not record location bar at Firefox
-        const mediaWindow = window.open(blob_url, "getDisplayMedia", `width=${width},height=${height + 30},alwaysOnTop`);
+        const mediaWindow = window.open(blobURL, "getDisplayMedia", `width=${width},height=${height + 30},alwaysOnTop`);
 
         mediaWindow.addEventListener("load", async e => {
           console.log(e);
@@ -53,7 +52,7 @@
 
           console.log(displayStream, displayStream.getTracks());
 
-          let urls = await Promise.all([{
+          let media = await Promise.all([{
             src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
             from: 0,
             to: 4
@@ -92,7 +91,7 @@
           mediaDocument.title = "click to start recording";
 
           mediaWindow.addEventListener("click", async e => {
-            click.textContent = "";
+            const blobURLs = [];
             const context = new AudioContext();
             const mediaStream = context.createMediaStreamDestination();
             const [audioTrack] = mediaStream.stream.getAudioTracks();
@@ -122,8 +121,8 @@
               videoBitsPerSecond: 2500000
             });
             recorder.addEventListener("start", e => {
-              console.error(e);
-              mediaDocument.title = "recording";
+              console.log(e);
+              mediaDocument.title = click.textContent = "recording";
               
             });
             recorder.addEventListener("error", e => {
@@ -135,12 +134,14 @@
             });
             recorder.addEventListener("stop", async e => {
               try {
+                click.textContent = "";
                 [videoTrack, audioTrack].forEach(track => {
                   track.enabled = false;
                   track.stop();
                 });
                 await context.close();
                 mediaWindow.close();
+                blobURLs.forEach(blobURL => URL.revokeObjectURL(blobURL));
                 console.log(e, videoTrack, audioTrack);
               } catch (e) {
                 console.error(e);
@@ -161,13 +162,14 @@
                   src,
                   blob
                 }
-                of urls) {
+                of media) {
                 await new Promise(resolve => {
                   const url = new URL(src);
                   if (url.hash.length) {
                     [from, to] = url.hash.match(/\d+|\d+\.\d+/g).map(Number);
                   }
                   const blobURL = URL.createObjectURL(blob);
+                  blobURLs.push(blobURL);
                   video.addEventListener("play", e => {
                     if (recorder.state === "inactive") {
                       recorder.start()
