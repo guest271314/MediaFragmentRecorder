@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Record media fragments to single webm video using getDisplayMedia(), AudioContext(), window.open(), MediaRecorder()</title>
 </head>
+
 <body>
   <h1 id="click">open window</h1>
   <script>
@@ -13,6 +15,7 @@
         const html = `<!DOCTYPE html>
                         <html>
                           <head>
+                            <title>getDisplayMedia</title>
                             <style>
                               * {padding:0; margin:0;overflow:hidden;} 
                               #video {cursor:none; object-fit:cover;object-position: 50% 50%;} 
@@ -21,7 +24,7 @@
                           </head>
                           <body>
                             <!-- add 30 for title and location bars -->
-                            <video id="video" width="${width}" height="${height}"></video>
+                            <video id="video" width="${width}" height="${height + 30}"></video>
                           </body>
                         </html>`;
 
@@ -31,7 +34,9 @@
 
         let done;
         const promise = new Promise(resolve => done = resolve);
-
+        // add 30 to height for Chromium 73 to not record title and location bar
+        // Firefox 68 records location bar using the same code
+        // TODO: adjust to not record location bar at Firefox
         const mediaWindow = window.open(blob_url, "getDisplayMedia", `width=${width},height=${height + 30},alwaysOnTop`);
 
         mediaWindow.addEventListener("load", async e => {
@@ -41,7 +46,7 @@
 
           const displayStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
-              cursor: "never", // this has little/no effect https://github.com/web-platform-tests/wpt/issues/16206
+              cursor: "never", // little to no effect https://github.com/web-platform-tests/wpt/issues/16206
               displaySurface: "browser"
             }
           });
@@ -84,18 +89,10 @@
             }
           }));
           click.textContent = "click popup window to start recording";
-
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx.font = "20px Monospace";
-          ctx.fillText("click to start recording", 0, height / 2);
-          video.poster = canvas.toDataURL();
-          mediaWindow.focus();
+          mediaDocument.title = "click to start recording";
 
           mediaWindow.addEventListener("click", async e => {
-            video.poster = "";
+            click.textContent = "";
             const context = new AudioContext();
             const mediaStream = context.createMediaStreamDestination();
             const [audioTrack] = mediaStream.stream.getAudioTracks();
@@ -124,16 +121,30 @@
               audioBitsPerSecond: 128000,
               videoBitsPerSecond: 2500000
             });
+            recorder.addEventListener("start", e => {
+              console.error(e);
+              mediaDocument.title = "recording";
+              
+            });
             recorder.addEventListener("error", e => {
-              console.error(e)
+              console.error(e);
             });
-            recorder.addEventListener("dataavailable", e => {
+            recorder.addEventListener("dataavailable", async e => {
               console.log(e.data);
-              done(URL.createObjectURL(e.data));
+              done(new Uint8Array(await new Response(e.data).arrayBuffer()));
             });
-            recorder.addEventListener("stop", e => {
-              console.log(e);
-              [videoTrack, audioTrack].forEach(track => track.stop());
+            recorder.addEventListener("stop", async e => {
+              try {
+                [videoTrack, audioTrack].forEach(track => {
+                  track.enabled = false;
+                  track.stop();
+                });
+                await context.close();
+                mediaWindow.close();
+                console.log(e, videoTrack, audioTrack);
+              } catch (e) {
+                console.error(e);
+              }
             });
             video.addEventListener("loadedmetadata", async e => {
               console.log(e);
@@ -188,14 +199,15 @@
             once: true
           });
         });
+        
         return await promise;
       })()
-      .then(blobURL => {
-        console.log(blobURL);
+      .then(mediaBuffer => {
+        console.log(mediaBuffer);
         const video = document.createElement("video");
         video.controls = true;
         document.body.appendChild(video);
-        video.src = blobURL;
+        video.src = URL.createObjectURL(new Blob([mediaBuffer]));
       }, console.error);
 
     click.addEventListener("click", e => {
