@@ -40,7 +40,7 @@
         raf = requestAnimationFrame(draw);
         return {mediaStream, audioContext, raf};
     }
-
+    const kinds = ["video", "audio"];
     const width = 320;
     const height = 240;
     const videoConstraints = {
