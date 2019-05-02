@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <title>Record media fragments to single webm video using RTCPeerConnection(), RTCRtpSender.replaceTrack(), MediaStream addtrack event, MediaRecorder()</title>
-  <!-- https://bugzilla.mozilla.org/show_bug.cgi?id=1542616; https://bugzilla.mozilla.org/show_bug.cgi?id=1544234 -->
 </head>
-
 <body>
   <h1 id="click">click</h1>
   <video id="playlist" src="" controls="true" autoplay="true"></video>
@@ -13,12 +10,28 @@
     const captureStream = mediaElement =>
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
     const createMediaStreamTracks = _ => {
-      const connection = new RTCPeerConnection();
-      const tracks = kinds.map(kind => {
-        return connection.addTransceiver(kind).receiver.track;
-      });
-      connection.close();
-      return tracks;
+      const audioContext = new AudioContext();
+      const audioStreamDestination = audioContext.createMediaStreamDestination();
+      let mediaStream = audioStreamDestination.stream;
+      const [audioTrack] = audioStreamDestination.stream.getAudioTracks();
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const canvasStream = canvas.captureStream(0);
+      const [videoTrack] = canvasStream.getVideoTracks();
+      mediaStream.addTrack(videoTrack);
+      let raf;
+      const draw = async() => {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, width, height);
+        requestFrame();
+        requestAnimationFrame(draw)
+      };
+      console.log(canvasStream.requestFrame);
+      const requestFrame = _ => canvasStream.requestFrame ? canvasStream.requestFrame() : videoTrack.requestFrame();
+      raf = requestAnimationFrame(draw);
+      return {
+        mediaStream, audioTrack, videoTrack, audioContext, audioStreamDestination, raf
+      };
     }
     const kinds = ["video", "audio"];
     const width = 320;
@@ -86,16 +99,16 @@
       .addEventListener("click", async e => {
         try {
           // create audio and video MediaStreamTrack
-          const mediaStreamTracks = createMediaStreamTracks();
-          const [videoTrack, audioTrack] = mediaStreamTracks;
+          let {
+            mediaStream, audioTrack, videoTrack, raf, audioContext
+          } = createMediaStreamTracks();
           try {
             await videoTrack.applyConstraints(videoConstraints);
           } catch (e) {
             console.error(e, e.name === "OverconstrainedError");
           }
-          let mediaStream = new MediaStream([videoTrack, audioTrack]);
           console.log("initial MediaStream, audio and video MediaStreamTracks", mediaStream, mediaStream.getTracks());
-          let tracks = 0;
+
           const fromLocalPeerConnection = new RTCPeerConnection();
           const toLocalPeerConnection = new RTCPeerConnection();
           const fromConnection = new Promise(resolve => fromLocalPeerConnection.addEventListener("icecandidate", async e => {
@@ -149,15 +162,18 @@
           });
           // Add initial audio and video MediaStreamTrack to PeerConnection, pass initial MediaStream
           const {
-            sender: audioSender
+            sender: audioSender,
+            receiver: audioReceiver
           } = fromLocalPeerConnection.addTransceiver(audioTrack, {
             streams: [mediaStream]
           });
           const {
-            sender: videoSender
+            sender: videoSender,
+            receiver: videoReceiver
           } = fromLocalPeerConnection.addTransceiver(videoTrack, {
             streams: [mediaStream]
           });
+          console.log(audioSender, videoSender, audioReceiver, videoReceiver);
           const offer = await fromLocalPeerConnection.createOffer();
           await toLocalPeerConnection.setRemoteDescription(offer);
           await fromLocalPeerConnection.setLocalDescription(toLocalPeerConnection.remoteDescription);
@@ -168,29 +184,17 @@
           await fromConnection;
           await toConnection;
           await mediaStreamTrackPromise;
-          // Firefox 68 Only first frame of first fragment is recorded 
-          // copy, unshift and play 0.2 second media fragment of first video in media array
-          // following SecurityError: The operation is insecure. at MediaRecorder.start()
-          // play full media fragment at index 1 of media array (copied to index 0)
-          // adds 1-2 seconds to resulting webm file
-          if (!!playlist.mozCaptureStream) {
-            media.unshift(media[0].replace(/#.+$/, "#t=0,0.375"));
-            console.log(media);
-          }
           console.log(audioSender, videoSender, mediaStream);
-
           const playlistStream = captureStream(playlist);
-          // Does not output expected result at Firefox 68
           playlistStream.addEventListener("addtrack", async e => {
             console.log(e.type, e.track);
             if (e.track.kind === "video") {
-              const id = e.track.id;
               try {
                 await e.track.applyConstraints(videoConstraints);
-                await videoSender.replaceTrack(e.track);
               } catch (e) {
                 console.error(e, e.name === "OverconstrainedError");
               }
+              await videoSender.replaceTrack(e.track);
             } else {
               await audioSender.replaceTrack(e.track);
             }
@@ -201,7 +205,8 @@
                 videoBitsPerSecond: 2500000
               });
               recorder.addEventListener("start", e => {
-                console.log(e);
+                console.log(e, e.target.stream.getTracks(), audioReceiver.track, videoReceiver.track);
+                cancelAnimationFrame(raf);
               });
               recorder.addEventListener("stop", e => {
                 console.log(e);
@@ -215,20 +220,15 @@
                 console.log(e);
               });
               recorder.addEventListener("pause", e => {
-                console.log(e);
+                console.log(e, e.target.stream.getTracks());
               });
             }
             if (recorder.state === "inactive") {
-              await Promise.all(unmutePromises);
               recorder.start();
             }
-            console.log(e.target.getTracks().findIndex(({
-              id
-            }) => e.track.id === id));
+
             e.track.addEventListener("mute", e => {
-              if (e.target.kind === "video") {
-                console.log(e.target.muted);
-              }
+              console.log(e.type);
             });
             e.track.addEventListener("unmute", e => {
               console.log(e.type);
@@ -238,20 +238,22 @@
             });
 
           });
+          await Promise.all(unmutePromises);
+          // Chromium outputs Blob with size 0 Blob {size: 0, type: "video/webm;codecs=vp8,opus"}
+          // if mediaStream is not attached to a <video> element, set srcObject to a <video> element
+          // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
+          if (!playlist.mozCaptureStream) {
+            const clone = playlist.cloneNode();
+            clone.muted = true;
+            clone.srcObject = mediaStream;
+          }
+
+          playlist.addEventListener("play", async e => {
+            console.log(e, e.target.readyState);
+          });
 
           for (const blobURL of media) {
             await new Promise(async resolve => {
-              playlist.addEventListener("play", async e => {
-                console.log(e, e.target.readyState);
-                // Chromium outputs Blob with size 0 Blob {size: 0, type: "video/webm;codecs=vp8,opus"}
-                // if mediaStream is not attached to a <video> element, set srcObject to a <video> element
-                // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
-                if (!playlist.mozCaptureStream) {
-                  playlist.cloneNode(true).srcObject = mediaStream;
-                }
-              }, {
-                once: true
-              });
               playlist.addEventListener("pause", e => {
                 console.log(e);
                 resolve();
@@ -272,6 +274,7 @@
           });
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
+          await audioContext.close();
           console.log(blob);
           playlist.remove();
           const videoStream = document.createElement("video");
