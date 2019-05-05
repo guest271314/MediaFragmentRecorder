@@ -6,23 +6,25 @@
 <body>
   <h1 id="click">open window</h1>
   <script>
-    const click = document.getElementById("click");
+    const click = document.getElementById("click"); 
+
     const go = ({
-        width = 320, height = 240
-      } = {}) => (async() => {
+      width = 320, height = 240
+    } = {}) => (async() => {
+      try {
         click.textContent = "fetching media resources";
         const html = `<!DOCTYPE html>
                         <html>
                           <head>
                             <title>getDisplayMedia</title>
                             <style>
-                              * {padding:0; margin:0;overflow:hidden;} 
-                              #video {cursor:none; object-fit:cover;object-position: 50% 50%;} 
+                              * {padding:0; margin:0;overflow:hidden;}
+                              #video {cursor:none; object-fit:cover;object-position: 50% 50%;}
                               video::-webkit-media-controls,audio::-webkit-media-controls {display:none !important;}
                             </style>
                           </head>
                           <body>
-                            <!-- add 30 for title and location bars -->
+                            <!-- Chromium: To not record location and title bars check if "TEMPORARY" is in window, if true add 30 to height -->
                             <video id="video" width="${width}" height="${height + 30}"></video>
                           </body>
                         </html>`;
@@ -33,13 +35,13 @@
 
         let done;
         const promise = new Promise(resolve => done = resolve);
-        // add 30 to height for Chromium 73 to not record title and location bar
-        // Firefox 68 records location bar using the same code
-        // TODO: adjust to not record location bar at Firefox
-        const mediaWindow = window.open(blobURL, "getDisplayMedia", `width=${width},height=${height + 30},alwaysOnTop`);
+        // Firefox: To not record location and title bars set dom.disable_window_open_feature.location at "about:preferences"
+        // Chromium: To not record location and title bars check if "TEMPORARY" is in window, if true add 30 to height
+        // Select window named "getDisplayMedia"
+        const mediaWindow = window.open(blobURL, "getDisplayMedia", `width=${width},height=${height + ("TEMPORARY" in window ? 30 : 0)}`);
 
         mediaWindow.addEventListener("load", async e => {
-          console.log(e);
+          console.log(e.target, e.currentTarget, mediaWindow);
           const mediaDocument = mediaWindow.document;
           const video = mediaDocument.getElementById("video");
 
@@ -123,7 +125,7 @@
             recorder.addEventListener("start", e => {
               console.log(e);
               mediaDocument.title = click.textContent = "recording";
-              
+
             });
             recorder.addEventListener("error", e => {
               console.error(e);
@@ -201,16 +203,19 @@
             once: true
           });
         });
-        
-        return await promise;
-      })()
-      .then(mediaBuffer => {
+
+        const mediaBuffer = await promise;
         console.log(mediaBuffer);
         const video = document.createElement("video");
         video.controls = true;
         document.body.appendChild(video);
+        video.onloadedmetadata = e => console.log(e.target.videoWidth, e.target.videoHeight);
         video.src = URL.createObjectURL(new Blob([mediaBuffer]));
-      }, console.error);
+      } catch (e) {
+        console.error(e);
+        console.trace();
+      }
+    })();
 
     click.addEventListener("click", e => {
       go();
