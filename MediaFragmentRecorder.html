@@ -116,10 +116,9 @@
             recorder.addEventListener("start", e => {
               console.log(e);
               mediaDocument.title = click.textContent = "recording";
-
             });
             recorder.addEventListener("error", e => {
-              console.error(e);
+              throw e;
             });
             recorder.addEventListener("dataavailable", async e => {
               console.log(e.data);
@@ -145,7 +144,7 @@
               try {
                 await videoStream.play();
               } catch (e) {
-                console.error(e);
+                throw e;
               }
             });
             try {
@@ -210,7 +209,7 @@
         const video = document.createElement("video");
         video.controls = true;
         document.body.appendChild(video);
-        video.onloadedmetadata = e => console.log(e.target.videoWidth, e.target.videoHeight);
+        video.addEventListener("loadedmetadata", e => console.log(e.target.videoWidth, e.target.videoHeight));
         video.src = URL.createObjectURL(new Blob([mediaBuffer]));
       } catch (e) {
         console.error(e);
