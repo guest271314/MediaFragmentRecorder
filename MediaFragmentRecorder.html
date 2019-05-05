@@ -8,7 +8,7 @@
   <script>
     const click = document.getElementById("click"); 
 
-    const go = ({
+    const mediaFragmentRecorder = ({
       width = 320, height = 240
     } = {}) => (async() => {
       try {
@@ -24,7 +24,7 @@
                             </style>
                           </head>
                           <body>
-                            <!-- Chromium: To not record location, title bars add 30 to height -->
+                            <!-- Chromium: To not record location and title bars check if "TEMPORARY" is in window, if true add 30 to height -->
                             <video id="video" width="${width}" height="${height + 30}"></video>
                           </body>
                         </html>`;
@@ -89,7 +89,7 @@
               ...props
             }
           }));
-          click.textContent = "click popup window to start recording";
+          click.textContent = "click getDisplayMedia window to start recording";
           mediaDocument.title = "click to start recording";
 
           mediaWindow.addEventListener("click", async e => {
@@ -101,8 +101,8 @@
 
             videoTrack.applyConstraints({
               cursor: "never",
-              width: 320,
-              height: 240,
+              width,
+              height,
               aspectRatio: 1.33,
               resizeMode: "crop-and-scale"
             });
@@ -218,7 +218,10 @@
     })();
 
     click.addEventListener("click", e => {
-      go();
+      mediaFragmentRecorder({
+        width: 640,
+        height: 480
+      });
     }, {
       once: true
     });
