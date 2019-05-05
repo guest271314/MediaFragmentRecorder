@@ -24,7 +24,7 @@
                             </style>
                           </head>
                           <body>
-                            <!-- Chromium: To not record location and title bars check if "TEMPORARY" is in window, if true add 30 to height -->
+                            <!-- Chromium: To not record location, title bars if "TEMPORARY" is in window add 30 to height -->
                             <video id="video" width="${width}" height="${height + 30}"></video>
                           </body>
                         </html>`;
@@ -107,7 +107,7 @@
               resizeMode: "crop-and-scale"
             });
 
-            mediaStream.stream.addTrack(videoTrack);
+            displayStream.addTrack(audioTrack);
             console.log(videoTrack.getSettings());
             const source = context.createMediaElementSource(video);
             source.connect(context.destination);
@@ -117,7 +117,7 @@
               track.onended = e => console.log(e);
             });
 
-            const recorder = new MediaRecorder(mediaStream.stream, {
+            const recorder = new MediaRecorder(displayStream, {
               mimeType: "video/webm;codecs=vp8,opus",
               audioBitsPerSecond: 128000,
               videoBitsPerSecond: 2500000
