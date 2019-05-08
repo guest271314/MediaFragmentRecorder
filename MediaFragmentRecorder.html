@@ -161,11 +161,11 @@
           await toConnection;
           await mediaStreamTrackPromise;
           // Firefox 68 Only first frame of first fragment is recorded 
-          // copy, unshift and play 0.375 second media fragment of first video in media array
+          // copy, unshift and play 0.4 second media fragment of first video in media array
           // following SecurityError: The operation is insecure. at MediaRecorder.start()
           // play full media fragment at index 1 of media array (copied to index 0)
           if (!!playlist.mozCaptureStream) {
-            media.unshift(media[0].replace(/#.+$/, "#t=0,0.375"));
+            media.unshift(media[0].replace(/#.+$/, "#t=0,0.4"));
             console.log(media);
           }
           console.log(audioSender, videoSender, mediaStream);
@@ -174,7 +174,6 @@
           
           for (const [index, blobURL] of media.entries()) {
             await new Promise(async resolve => {
-
               playlist.addEventListener("play", async e => {
                 console.log(e, e.target.readyState);
                 const stream = captureStream(playlist);
@@ -276,7 +275,6 @@
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
           console.log(blob);
-
           playlist.remove();
           const videoStream = document.createElement("video");
           videoStream.addEventListener("canplaythrough", e => {
