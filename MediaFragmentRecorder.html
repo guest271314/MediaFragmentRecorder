@@ -27,6 +27,7 @@
         requestAnimationFrame(draw)
       };
       console.log(canvasStream.requestFrame);
+      // https://github.com/w3c/mediacapture-fromelement/issues/76
       const requestFrame = _ => canvasStream.requestFrame ? canvasStream.requestFrame() : videoTrack.requestFrame();
       raf = requestAnimationFrame(draw);
       return {
