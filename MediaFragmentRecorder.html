@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <title>Record media fragments to single video using HTMLMediaElement.captureStream(), MediaRecorder, and MediaSource</title>
 </head>
-
 <body>
   <h1 id="click">click</h1>
   <script>
@@ -233,7 +231,7 @@
         video.addEventListener("abort", e => console.log(e));
         video.addEventListener("emptied", e => console.log(e));
         video.addEventListener("suspend", e => console.log(e));
-        mediaSource.addEventListener("sourceopen", sourceOpen);
+        mediaSource.addEventListener("sourceopen", sourceOpen, {once: true});
         video.src = URL.createObjectURL(mediaSource);
       })
       .catch(e => console.error(e));
