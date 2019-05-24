@@ -10,7 +10,6 @@
   (async() => {
     const captureStream = mediaElement =>
       "mozCaptureStream" in mediaElement ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
-
     const width = 320;
     const height = 240;
     const videoConstraints = {
@@ -68,7 +67,6 @@
     let playlist = document.getElementById("playlist");
     playlist.width = width;
     playlist.height = height;
-
     let resolveResult;
     let result;
     const promiseResult = new Promise(resolve => resolveResult = resolve);
@@ -107,7 +105,6 @@
           recorder.addEventListener("pause", e => {
             console.log(e, e.target.stream.getTracks());
           });
-
           playlistStream.addEventListener("addtrack", async e => {
             console.log(e.type, e.track);
             if (e.track.kind === "video") {
@@ -192,6 +189,7 @@
           await audioContext.close();
           console.log(blob);
           playlist.remove();
+          canvas.remove();
           const videoStream = document.createElement("video");
           videoStream.addEventListener("canplaythrough", e => {
             console.log(videoStream.duration, videoStream.seekable.end(0));
