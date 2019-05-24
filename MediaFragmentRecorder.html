@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Record media fragments to single media file using MediaStream addtrack event, ImageCapture(), canvas.captureStream(), AudioContext(), MediaRecorder()</title>
+  <title>Record media fragments to single media file using HTMLMediaElement.captureStream(), MediaStream addtrack event, ImageCapture(), canvas.captureStream(), ReadableStream(), WritableStream(), AudioContext(), MediaRecorder()</title>
 </head>
 <body>
   <h1 id="click">click</h1>
@@ -165,11 +165,10 @@
               playlist.addEventListener("pause", e => {
                 console.log(e);
                 recorder.pause();
-                playlistStream.getVideoTracks()
-                  .forEach(track => {
-                    track.enabled = false;
-                    track.stop();
-                  });
+                const currentVideoTrack = playlistStream.getVideoTracks().pop();
+                currentVideoTrack.enabled = false;
+                currentVideoTrack.stop();
+                console.log(currentVideoTrack);
                 resolve();
               }, {
                 once: true
@@ -192,7 +191,7 @@
           canvas.remove();
           const videoStream = document.createElement("video");
           videoStream.addEventListener("canplaythrough", e => {
-            console.log(videoStream.duration, videoStream.seekable.end(0));
+            console.log(videoStream.duration, videoStream.buffered.end(0));
           });
           videoStream.width = width;
           videoStream.height = height;
