@@ -73,6 +73,7 @@
       document.getElementById("click")
         .addEventListener("click", async e => {
           try {
+            const controllers = new Map();
             const audioContext = new AudioContext();
             const mediaStreamDestination = audioContext.createMediaStreamDestination();
             const [audioTrack] = mediaStreamDestination.stream.getAudioTracks();
@@ -110,14 +111,17 @@
               if (e.track.kind === "video") {
                 try {
                   await e.track.applyConstraints(videoConstraints);
+                  const {id} = e.track;
                   const imageCapture = new ImageCapture(e.track);
                   new ReadableStream({
+                      async start(controller) {
+                        console.log("reader start");
+                        return controllers.set(id, controller);
+                      },
                       async pull(controller) {
                         if (e.track.enabled && e.track.readyState === "live") {
                           controller.enqueue(await imageCapture.grabFrame());
-                        } else {
-                          controller.close();
-                        }
+                        };
                       }
                     })
                     .pipeTo(new WritableStream({
@@ -128,6 +132,8 @@
                           } else {
                             canvasStream.getVideoTracks()[0].requestFrame()
                           }
+                        }, close() {
+                          console.log("writer close");
                         }
                     }))
                     .catch(e => {
@@ -166,8 +172,10 @@
                   console.log(e);
                   recorder.pause();
                   const currentVideoTrack = playlistStream.getVideoTracks().find(({enabled}) => enabled);
+                  const {id} = currentVideoTrack;
                   currentVideoTrack.enabled = false;
                   currentVideoTrack.stop();
+                  controllers.get(id).close();
                   console.log(currentVideoTrack);
                   resolve();
                 }, {
