@@ -87,6 +87,7 @@
             const ctx = canvas.getContext("bitmaprenderer");
             const playlistStream = captureStream(playlist);
             const recorder = new MediaRecorder(mediaStreamDestination.stream, {
+              // https://www.mpegla.com/wp-content/uploads/n-10-08-26.pdf
               mimeType: "video/x-matroska;codecs=avc1"
             });
             recorder.addEventListener("start", e => {
