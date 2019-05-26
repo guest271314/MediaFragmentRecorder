@@ -87,7 +87,7 @@
             const ctx = canvas.getContext("bitmaprenderer");
             const playlistStream = captureStream(playlist);
             const recorder = new MediaRecorder(mediaStreamDestination.stream, {
-              mimeType: "video/x-matroska;codecs=avc1"
+              mimeType: "video/webm;codecs=vp9,opus"
             });
             recorder.addEventListener("start", e => {
               console.log(e, e.target.stream.getTracks());
