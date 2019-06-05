@@ -77,7 +77,6 @@
             const audioContext = new AudioContext();
             const mediaStreamDestination = audioContext.createMediaStreamDestination();
             const [audioTrack] = mediaStreamDestination.stream.getAudioTracks();
-            mediaStreamDestination.connect(audioContext.destination);
             const canvas = document.createElement("canvas");
             canvas.width = width;
             canvas.height = height;
