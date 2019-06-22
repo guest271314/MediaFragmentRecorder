@@ -68,7 +68,9 @@
                 const mediaStream = captureStream(video);
                 try {
                   console.log(mediaStream.getVideoTracks()[0]);
-                  await mediaStream.getVideoTracks()[0].applyConstraints(videoConstraints);
+                  // variable video width, height should be recorded 
+                  // https://bugs.chromium.org/p/chromium/issues/detail?id=972470
+                  // await mediaStream.getVideoTracks()[0].applyConstraints(videoConstraints);
                 } catch (e) {
                   console.error(e, mediaStream.getVideoTracks()[0].getSettings(), mediaStream.getVideoTracks()[0].getConstraints());
                 }
@@ -149,8 +151,8 @@
       }) => {
         let recorder, mediaStream;
         const video = document.createElement("video");
-        video.width = width;
-        video.height = height;
+        // video.width = width;
+        // video.height = height;
         video.controls = true;
         video.autoplay = true;
         document.body.appendChild(video);
@@ -204,8 +206,8 @@
           });
           recorder.addEventListener("dataavailable", e => {
             let media = document.createElement("video");
-            media.width = width;
-            media.height = height;
+            // media.width = width;
+            // media.height = height;
             media.controls = true;
             media.addEventListener("loadedmetadata", e => {
               console.log(e, e.target.duration, e.target.buffered.end(0), e.target.seekable.end(0), duration, mediaSource.duration);
