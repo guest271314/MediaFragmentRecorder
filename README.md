@@ -8,4 +8,10 @@ Motivation: [OfflineMediaContext](https://github.com/guest271314/OfflineMediaCon
 
 `$ mkvmerge -w -o int_all.webm int.webm + int1.webm`
 
+--
 
+Issue 943484: Tab crashes when HTMLMediaElement.captureStream() is called on <video> with MediaSource Blob URL set at src
+            
+https://github.com/w3c/media-source/issues/190
+
+https://bugs.chromium.org/p/chromium/issues/detail?id=820997
