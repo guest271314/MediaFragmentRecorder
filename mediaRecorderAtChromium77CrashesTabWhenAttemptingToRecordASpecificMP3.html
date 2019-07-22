@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MediaRecorder at Chromium 77.0.3854.3 crashes tab when attempting to record a specific .mp3 file</title>
+</head>
+<body>
+  <!-- 
+    navigate to https://www.nasa.gov/specials/apollo50th/audio/eagle-has-landed.mp3 
+    download then then upload the file to <input type="file">
+  -->
+  <!-- https://plnkr.co/edit/RU6QYC?p=preview -->
+  <input type="file">
+  <audio autoplay controls></audio>
+  <script>
+    const input = document.querySelector("input");
+    const audio = document.querySelector("audio");
+    input.onchange = e => {
+      const blobURL = URL.createObjectURL(e.target.files[0]);
+      audio.src = blobURL + "#t=0,5";
+      let recorder;
+      audio.onplay = e => {
+        const audioStream = audio.mozCaptureStream ? audio.mozCaptureStream() : audio.captureStream();
+        const [audioTrack] = audioStream.getAudioTracks();
+        console.log(audioTrack); // captureStream is not the issue
+        recorder = new MediaRecorder(audioStream);
+        recorder.ondataavailable = e => {
+          console.log(e.data);
+        };
+        recorder.start();
+      };
+      audio.onpause = _ => {
+        recorder.stop();
+      };
+    };
+  </script>
+</body>
+</html>
