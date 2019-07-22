@@ -22,6 +22,7 @@
         const audioStream = audio.mozCaptureStream ? audio.mozCaptureStream() : audio.captureStream();
         const [audioTrack] = audioStream.getAudioTracks();
         console.log(audioTrack); // captureStream is not the issue
+        // https://bugs.chromium.org/p/chromium/issues/detail?id=986148
         recorder = new MediaRecorder(audioStream);
         recorder.ondataavailable = e => {
           console.log(e.data);
