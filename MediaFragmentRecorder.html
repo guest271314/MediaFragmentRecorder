@@ -10,18 +10,11 @@
     (async() => {
       const captureStream = mediaElement =>
         "mozCaptureStream" in mediaElement ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
-      const width = 320;
-      const height = 240;
-      const videoConstraints = {
-        resizeMode: "crop-and-scale",
-        width,
-        height
-      };
       const blobURLS = [];
       const urls = Promise.all([{
-        src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
         from: 0,
-        to: 4
+        to: 4,
+        src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv"
       }, {
         from: 10,
         to: 20,
@@ -65,8 +58,6 @@
       }));
       let media = await urls;
       let playlist = document.getElementById("playlist");
-      playlist.width = width;
-      playlist.height = height;
       let resolveResult;
       let result;
       const promiseResult = new Promise(resolve => resolveResult = resolve);
@@ -78,16 +69,18 @@
             const mediaStreamDestination = audioContext.createMediaStreamDestination();
             const [audioTrack] = mediaStreamDestination.stream.getAudioTracks();
             const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width = canvas.height = 0;
             document.body.appendChild(canvas);
             const canvasStream = canvas.captureStream(0);
+            const [videoTrack] = canvasStream.getVideoTracks();
+            const stream = [canvasStream, videoTrack].find(({
+              requestFrame: rF
+            }) => rF);
             mediaStreamDestination.stream.addTrack(canvasStream.getVideoTracks()[0]);
             const ctx = canvas.getContext("bitmaprenderer");
             const playlistStream = captureStream(playlist);
             const recorder = new MediaRecorder(mediaStreamDestination.stream, {
-              // https://www.mpegla.com/wp-content/uploads/n-10-08-26.pdf
-              mimeType: "video/x-matroska;codecs=avc1"
+              mimeType: "video/webm;codecs=vp8,opus"
             });
             recorder.addEventListener("start", e => {
               console.log(e, e.target.stream.getTracks());
@@ -110,38 +103,41 @@
               console.log(e.type, e.track);
               if (e.track.kind === "video") {
                 try {
-                  await e.track.applyConstraints(videoConstraints);
-                  const {id} = e.track;
+                  const {
+                    width, height
+                  } = e.track.getSettings();
+                  canvas.width = width;
+                  canvas.height = height;
+                  const {
+                    id
+                  } = e.track;
                   const imageCapture = new ImageCapture(e.track);
                   new ReadableStream({
                       async start(controller) {
-                        console.log("reader start");
-                        return readableStreamControllers.set(id, controller);
-                      },
-                      async pull(controller) {
-                        if (e.track.enabled && e.track.readyState === "live") {
-                          controller.enqueue(await imageCapture.grabFrame());
-                        };
-                      }
+                          console.log("reader start");
+                          return readableStreamControllers.set(id, controller);
+                        },
+                        async pull(controller) {
+                          if (e.track.enabled && e.track.readyState === "live") {
+                            // https://github.com/w3c/mediacapture-image/issues/212
+                            controller.enqueue(await imageCapture.grabFrame());
+                          };
+                        }
                     })
                     .pipeTo(new WritableStream({
                       write(imageBitmap) {
-                          ctx.transferFromImageBitmap(imageBitmap);
-                          if ("requestFrame" in canvasStream) {
-                            canvasStream.requestFrame()
-                          } else {
-                            canvasStream.getVideoTracks()[0].requestFrame()
-                          }
-                          imageBitmap.close();
-                        }, close() {
-                          console.log("writer close");
-                        }
+                        ctx.transferFromImageBitmap(imageBitmap);
+                        stream.requestFrame();
+                        imageBitmap.close();
+                      }, close() {
+                        console.log("writer close");
+                      }
                     }))
                     .catch(e => {
                       throw e;
                     })
                 } catch (e) {
-                  console.error(e, e.name === "OverconstrainedError");
+                  console.error(e);
                 }
               } else {
                 const audioTrack = audioContext.createMediaStreamSource(new MediaStream([e.track]));
@@ -172,8 +168,12 @@
                 playlist.addEventListener("pause", e => {
                   console.log(e);
                   recorder.pause();
-                  const currentVideoTrack = playlistStream.getVideoTracks().find(({enabled}) => enabled);
-                  const {id} = currentVideoTrack;
+                  const currentVideoTrack = playlistStream.getVideoTracks().find(({
+                    enabled
+                  }) => enabled);
+                  const {
+                    id
+                  } = currentVideoTrack;
                   currentVideoTrack.enabled = false;
                   currentVideoTrack.stop();
                   readableStreamControllers.get(id).close();
@@ -188,9 +188,10 @@
             recorder.stop();
             let blob = await promiseResult;
             blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
-            [...mediaStreamDestination.stream.getTracks()
-            , ...playlistStream.getTracks()]
-            .filter(({enabled}) => enabled)
+            [...mediaStreamDestination.stream.getTracks(), ...playlistStream.getTracks()]
+            .filter(({
+                enabled
+              }) => enabled)
               .forEach(track => {
                 track.enabled = false;
                 track.stop();
@@ -202,10 +203,8 @@
             canvas.remove();
             const videoStream = document.createElement("video");
             videoStream.addEventListener("canplaythrough", e => {
-              console.log(videoStream.duration, videoStream.buffered.end(0));
+              console.log(videoStream.duration);
             });
-            videoStream.width = width;
-            videoStream.height = height;
             videoStream.controls = true;
             document.body.appendChild(videoStream);
             videoStream.src = URL.createObjectURL(blob);
