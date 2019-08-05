@@ -187,7 +187,7 @@
             }
             recorder.stop();
             let blob = await promiseResult;
-            blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
+
             [...mediaStreamDestination.stream.getTracks(), ...playlistStream.getTracks()]
             .filter(({
                 enabled
@@ -197,7 +197,6 @@
                 track.stop();
               });
             await audioContext.close();
-            console.log(blob);
             playlist.src = "";
             playlist.remove();
             canvas.remove();
@@ -206,8 +205,12 @@
               console.log(videoStream.duration);
             });
             videoStream.controls = true;
+            videoStream.preload = "auto";
+            const src = URL.createObjectURL(blob);
             document.body.appendChild(videoStream);
-            videoStream.src = URL.createObjectURL(blob);
+            videoStream.src = src;
+            console.log(blob, src);
+            blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
           } catch (e) {
             console.error(e);
             console.trace();
