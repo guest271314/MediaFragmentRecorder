@@ -197,9 +197,6 @@
                 track.stop();
               });
             await audioContext.close();
-            playlist.src = "";
-            playlist.remove();
-            canvas.remove();
             const videoStream = document.createElement("video");
             videoStream.addEventListener("canplaythrough", e => {
               console.log(videoStream.duration);
@@ -210,6 +207,9 @@
             document.body.appendChild(videoStream);
             videoStream.src = src;
             console.log(blob, src);
+            playlist.src = "";
+            playlist.remove();
+            canvas.remove();
             blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
           } catch (e) {
             console.error(e);
