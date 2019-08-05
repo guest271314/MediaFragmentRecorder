@@ -67,7 +67,7 @@
             const readableStreamControllers = new Map();
             const audioContext = new AudioContext();
             const mediaStreamDestination = audioContext.createMediaStreamDestination();
-            const [audioTrack] = mediaStreamDestination.stream.getAudioTracks();
+            //onst [audioTrack] = mediaStreamDestination.stream.getAudioTracks();
             const canvas = document.createElement("canvas");
             canvas.width = canvas.height = 0;
             document.body.appendChild(canvas);
@@ -200,6 +200,7 @@
             const videoStream = document.createElement("video");
             videoStream.addEventListener("canplaythrough", e => {
               console.log(videoStream.duration);
+              blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
             });
             videoStream.controls = true;
             videoStream.preload = "auto";
@@ -210,7 +211,6 @@
             playlist.src = "";
             playlist.remove();
             canvas.remove();
-            blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
           } catch (e) {
             console.error(e);
             console.trace();
