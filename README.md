@@ -15,3 +15,5 @@ Issue 943484: Tab crashes when HTMLMediaElement.captureStream() is called on <vi
 https://github.com/w3c/media-source/issues/190
 
 https://bugs.chromium.org/p/chromium/issues/detail?id=820997
+
+[Branches of this repository](https://github.com/guest271314/MediaFragmentRecorder/branches)
