@@ -126,7 +126,7 @@
       .then(blobURL => {
          const videoStream = document.createElement("video");
          videoStream.autoplay = true;
-         videoStream.src = URL.createObjectURL(blobURL);
+         videoStream.src = blobURL;
       });
     }
   </script>
