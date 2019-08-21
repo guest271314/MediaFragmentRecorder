@@ -10,7 +10,6 @@
     (async() => {
       const captureStream = mediaElement =>
         "mozCaptureStream" in mediaElement ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
-      const blobURLS = [];
       const urls = Promise.all([{
         from: 0,
         to: 4,
@@ -48,7 +47,6 @@
           const request = await fetch(src);
           const blob = await request.blob();
           const blobURL = URL.createObjectURL(blob);
-          blobURLS.push(blobURL);
           const url = new URL(src);
           console.log(url.hash);
           return blobURL + (url.hash || `#t=${from},${to}`);
@@ -198,7 +196,7 @@
             const videoStream = document.createElement("video");
             videoStream.addEventListener("canplaythrough", e => {
               console.log(videoStream.duration);
-              blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
+              media.forEach(blobURL => URL.revokeObjectURL(blobURL.split("#").shift()));
             });
             videoStream.addEventListener("resize", ({target:{videoWidth, videoHeight}}) => {
               console.log(videoWidth, videoHeight);
