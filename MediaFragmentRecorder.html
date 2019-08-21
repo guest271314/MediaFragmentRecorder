@@ -67,7 +67,6 @@
             const readableStreamControllers = new Map();
             const audioContext = new AudioContext();
             const mediaStreamDestination = audioContext.createMediaStreamDestination();
-            //onst [audioTrack] = mediaStreamDestination.stream.getAudioTracks();
             const canvas = document.createElement("canvas");
             canvas.width = canvas.height = 0;
             document.body.appendChild(canvas);
@@ -92,7 +91,7 @@
             recorder.addEventListener("dataavailable", e => {
               console.log(e.data);
               result = e.data;
-            });
+            }, {once:true});
             recorder.addEventListener("error", e => {
               console.log(e);
             });
@@ -187,7 +186,6 @@
             }
             recorder.stop();
             let blob = await promiseResult;
-
             [...mediaStreamDestination.stream.getTracks(), ...playlistStream.getTracks()]
             .filter(({
                 enabled
@@ -202,7 +200,10 @@
               console.log(videoStream.duration);
               blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
             });
-            videoStream.controls = true;
+            videoStream.addEventListener("resize", ({target:{videoWidth, videoHeight}}) => {
+              console.log(videoWidth, videoHeight);
+            });
+            videoStream.controls = videoStream.autoplay = true;
             videoStream.preload = "auto";
             const src = URL.createObjectURL(blob);
             document.body.appendChild(videoStream);
