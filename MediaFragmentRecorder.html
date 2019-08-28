@@ -24,12 +24,7 @@
           throw new TypeError("no urls passed to MediaFragmentRecorder");
         }
         return (async() => {
-
           const chunks = [];
-          const videoConstraints = {
-            width,
-            height
-          };
           let duration = 0;
           let media = await Promise.all(
             urls.map(async({
@@ -58,9 +53,6 @@
               let recorder;
               const blobURL = URL.createObjectURL(blob);
               const video = document.createElement("video");
-
-              video.height = height;
-              video.width = width;
               video.autoplay = true;
               video.preload = "auto";
               document.body.appendChild(video);
@@ -89,7 +81,6 @@
                   chunks.push(await new Response(e.data).arrayBuffer());
                   URL.revokeObjectURL(blobURL);
                 });
-
               }, {
                 once: true
               });
@@ -101,11 +92,9 @@
               }, {
                 once: true
               });
-
               video.src = `${blobURL}#t=${from},${to}`;
             })
           };
-
           return {
             chunks,
             duration,
