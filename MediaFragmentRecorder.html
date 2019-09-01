@@ -1,304 +1,265 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-  <title>Record media fragments to single webm video using RTCPeerConnection(), RTCRtpSender.replaceTrack(), MediaRecorder()</title>
-  <!-- https://bugzilla.mozilla.org/show_bug.cgi?id=1542616; https://bugzilla.mozilla.org/show_bug.cgi?id=1544234 -->
+  <title>Record MediaStream potentially including variable width and height MediaStreamTrack with RTCPeerConnection(), RTCRtpSender.replaceTrack(), MediaRecorder(), openh264 codec, AudioWorklet, OffscreenCanvas, Worker, JavaScript Module</title>
 </head>
-
 <body>
-  <h1 id="click">click</h1>
-  <video id="playlist" src="" controls="true" preload="auto"></video>
-  <script>
-    const captureStream = mediaElement =>
-      !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
-    const createMediaStreamTracks = _ => {
-      const audioContext = new AudioContext();
-      const gainNode = audioContext.createGain();
-      const oscillator = audioContext.createOscillator();
-      oscillator.frequency.value = 0;
-      const audioStreamDestination = audioContext.createMediaStreamDestination();
-      const mediaStream = audioStreamDestination.stream;
-      const [audioTrack] = mediaStream.getAudioTracks();
-      gainNode.gain.value = 1;
-      oscillator.connect(gainNode).connect(audioContext.destination);
-      oscillator.start();
-      const canvas = document.createElement("canvas");
-      canvas.width = playlist.width = screen.width;
-      canvas.height = playlist.height = screen.height;
-      const ctx = canvas.getContext("2d");
-      const canvasStream = canvas.captureStream(0);
-      const [videoTrack] = canvasStream.getVideoTracks();
-      mediaStream.addTrack(videoTrack);
-      let raf;
-      const draw = async() => {
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, screen.width, screen.height);
-        requestFrame();
-        requestAnimationFrame(draw)
-      };
-      console.log(canvasStream.requestFrame);
-      const requestFrame = _ => canvasStream.requestFrame ? canvasStream.requestFrame() : videoTrack.requestFrame();
-      raf = requestAnimationFrame(draw);
-      return {
-        mediaStream, audioContext, raf, canvas
-      };
+  <video id="video" autoplay controls></video>
+  <script type="module">
+    // MediaStream outputting #000000 video frames and audio silence
+    import {
+      mediaStream, audioContext, worker
     }
-    const kinds = ["video", "audio"];
-    const blobURLS = [];
-    const urls = Promise.all([{
-      src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
-      from: 0,
-      to: 4
-    }, {
-      src: "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=10,20",
-      from: 10,
-      to: 20
-    }, {
-      from: 55,
-      to: 60,
-      src: "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4"
-    }, {
-      from: 0,
-      to: 5,
-      src: "https://raw.githubusercontent.com/w3c/web-platform-tests/master/media-source/mp4/test.mp4"
-    }, {
-      from: 0,
-      to: 5,
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
-    }, {
-      from: 0,
-      to: 5,
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
-    }, {
-      from: 0,
-      to: 6,
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6"
-    }].map(async({
-      from,
-      to,
-      src
-    }) => {
-      try {
-        const request = await fetch(src);
-        const blob = await request.blob();
-        const blobURL = URL.createObjectURL(blob);
-        blobURLS.push(blobURL);
-        const url = new URL(src);
-        //console.log(url.hash);
-        return blobURL + (url.hash || `#t=${from},${to}`);
-      } catch (e) {
-        throw e;
-      }
-    }));
-    let playlist = document.getElementById("playlist");
-    
-    let recorder;
-    let resolveResult;
-    let result;
-    const promiseResult = new Promise(resolve => resolveResult = resolve);
-    document.getElementById("click")
-      .addEventListener("click", async e => {
+    from "./export.js";
+    let recorder, result;
+    const video = document.getElementById("video");
+    console.log(mediaStream, audioContext, worker);
+    (async() => {
+      const [audioTrack, videoTrack] = ["audio", "video"].map(kind => mediaStream.getTracks().find(({
+        kind: trackKind
+      }) => trackKind === kind));
+      const fromLocalPeerConnection = new RTCPeerConnection();
+      const toLocalPeerConnection = new RTCPeerConnection();
+      const fromConnection = new Promise(resolve => fromLocalPeerConnection.addEventListener("icecandidate", async e => {
+        console.log("from", e);
         try {
-          // create audio and video MediaStreamTrack
-          let {
-            mediaStream, raf, audioContext, canvas
-          } = createMediaStreamTracks();
-          const [videoTrack, audioTrack] = [mediaStream.getVideoTracks()[0], mediaStream.getAudioTracks()[0]];
-          try {
-            // await videoTrack.applyConstraints(videoConstraints);
-          } catch (e) {
-            console.error(e, e.name === "OverconstrainedError");
-          }
-          // let mediaStream = new MediaStream([videoTrack, audioTrack]);
-          console.log("initial MediaStream, audio and video MediaStreamTracks", mediaStream, mediaStream.getTracks());
-          let tracks = 0;
-          const fromLocalPeerConnection = new RTCPeerConnection();
-          const toLocalPeerConnection = new RTCPeerConnection();
-          const fromConnection = new Promise(resolve => fromLocalPeerConnection.addEventListener("icecandidate", async e => {
-            console.log("from", e);
-            try {
-              resolve(toLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null));
-            } catch (e) {
-              console.error(e);
-            }
-          }, {
-            once: true
-          }));
-          const toConnection = new Promise(resolve => toLocalPeerConnection.addEventListener("icecandidate", async e => {
-            console.log("to", e);
-            try {
-              resolve(fromLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null));
-            } catch (e) {
-              console.error(e);
-            }
-          }, {
-            once: true
-          }));
-          fromLocalPeerConnection.addEventListener("negotiationneeded", e => {
-            console.log(e);
-          });
-          toLocalPeerConnection.addEventListener("negotiationneeded", e => {
-            console.log(e);
-          });
-          const unmutePromises = [];
-          const mediaStreamTrackPromise = new Promise(resolve => {
-            toLocalPeerConnection.addEventListener("track", event => {
-              unmutePromises.push(new Promise(res => event.track.addEventListener("unmute", e => {
-                console.log(e);
-                res(e.target)
-              })));
-              console.log("track event", event);
-              kinds.splice(kinds.findIndex(({
-                kind
-              }) => kind === event.track.kind), 1);
-              // Wait for both "track" events
-              if (kinds.length === 0) {
-                const {
-                  streams: [stream]
-                } = event;
-                console.log(stream);
-                // Reassign stream to initial MediaStream reference                                                           
-                mediaStream = stream;
-                resolve();
-              }
-            });
-          });
-          // Add initial audio and video MediaStreamTrack to PeerConnection, pass initial MediaStream
-          const audioSender = fromLocalPeerConnection.addTrack(audioTrack, mediaStream);
-          const videoSender = fromLocalPeerConnection.addTrack(videoTrack, mediaStream);
-          const offer = await fromLocalPeerConnection.createOffer();
-          await toLocalPeerConnection.setRemoteDescription(offer);
-          await fromLocalPeerConnection.setLocalDescription(toLocalPeerConnection.remoteDescription);
-          const answer = await toLocalPeerConnection.createAnswer();
-          await fromLocalPeerConnection.setRemoteDescription(answer);
-          await toLocalPeerConnection.setLocalDescription(fromLocalPeerConnection.remoteDescription);
-          let media = await urls;
-          await fromConnection;
-          await toConnection;
-          await mediaStreamTrackPromise;
-          console.log(audioSender, videoSender, mediaStream);
-          await Promise.all(unmutePromises);
-          for (const [index, blobURL] of media.entries()) {
-            await new Promise(async resolve => {
-              playlist.addEventListener("resize", async e => {
-                await playlist.play();
-              });
-              playlist.addEventListener("loadedmetadata", _ => {
-                console.log(playlist.videoWidth, playlist.videoHeight);
-                playlist.width = canvas.width = playlist.videoWidth;
-                playlist.height = canvas.height = playlist.videoHeight;
-              });
-              playlist.addEventListener("play", async e => {
-                console.log(e.type);
-                const stream = captureStream(playlist);
-                const [playlistVideoTrack] = stream.getVideoTracks();
-                const [playlistAudioTrack] = stream.getAudioTracks();
-                console.log(playlistVideoTrack.getSettings());
-                // Replace audio and video MediaStreamTrack with a new media resource
-                // id of the initial MediaStreamTrack does not change
-                // replaceTrack() 6.4.3 https://w3c.github.io/webrtc-pc/#dom-rtcrtpsender-replacetrack
-                // "If sending is true, and withTrack is not null, 
-                // have the sender switch seamlessly to transmitting withTrack 
-                // instead of the sender's existing track." 
-                await videoSender.replaceTrack(playlistVideoTrack);
-                await audioSender.replaceTrack(playlistAudioTrack);
-                if (!recorder) {
-                  // Chromium outputs Blob with size 0 Blob {size: 0, type: "video/webm;codecs=vp8,opus"}
-                  // if mediaStream is not attached to a <video> element, set srcObject to a <video> element
-                  // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
-                  if (!playlist.mozCaptureStream) {
-                    playlist.cloneNode(true).srcObject = mediaStream;
-                  }
-                  recorder = new MediaRecorder(mediaStream, {
-                    mimeType: "video/webm;codecs=vp8,opus"
-                  });
-                  recorder.addEventListener("start", e => {
-                    console.log(e.type);
-                  });
-                  recorder.addEventListener("stop", e => {
-                    resolveResult(result);
-                  });
-                  recorder.addEventListener("dataavailable", e => {
-                    result = e.data;
-                  }, {
-                    once: true
-                  });
-                  recorder.addEventListener("error", e => {
-                    console.log(e);
-                  });
-                  recorder.addEventListener("pause", e => {
-                    console.log(e.type);
-                  });
-                }
-                if (recorder && recorder.state === "inactive") {
-                  try {
-                    recorder.start();
-                  } catch (e) {
-                    console.error(e);
-                  }
-                } else {
-                  if (recorder.state === "paused") {
-                    recorder.resume();
-                  }
-                }
-
-              }, {
-                once: true
-              });
-              playlist.addEventListener("pause", e => {
-                // console.log(e);
-                if (recorder.state === "recording") {
-                  recorder.pause();
-                }
-                // Firefox 68 does not populate MediaStream with audio and video MediaStreamTrack
-                // when src is set to different media resource then mozCaptureStream()
-                // executed on same <video> element, remove <video> element, create new <video> element
-                // https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
-                playlist.remove();
-                playlist = document.createElement("video");
-                playlist.id = "playlist";
-                playlist.autoplay = true;
-                playlist.width = canvas.width;
-                playlist.height = canvas.height;
-                document.body.appendChild(playlist);
-                resolve();
-              }, {
-                once: true
-              });
-              playlist.onresize = e => console.log(e.type);
-              playlist.src = blobURL;
-            });
-          }
-          recorder.stop();
-          let blob = await promiseResult;
-          cancelAnimationFrame(raf);
-          await audioContext.close();
-          [audioTrack, videoTrack, ...mediaStream.getTracks()]
-          .forEach(track => {
-            track.stop();
-            track.enabled = false;
-          });
-          fromLocalPeerConnection.close();
-          toLocalPeerConnection.close();
-          console.log(blob);
-          playlist.remove();
-          const videoStream = document.createElement("video");
-          videoStream.addEventListener("canplaythrough", e => {
-            console.log(videoStream.videoWidth, videoStream.videoHeight);
-            blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
-          });
-          videoStream.controls = true;
-          document.body.appendChild(videoStream);
-          videoStream.src = URL.createObjectURL(blob);
+          resolve(toLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null));
         } catch (e) {
           console.error(e);
-          console.trace();
-        };
+        }
       }, {
         once: true
+      }));
+      const toConnection = new Promise(resolve => toLocalPeerConnection.addEventListener("icecandidate", async e => {
+        console.log("to", e);
+        try {
+          resolve(fromLocalPeerConnection.addIceCandidate(e.candidate ? e.candidate : null));
+        } catch (e) {
+          console.error(e);
+        }
+      }, {
+        once: true
+      }));
+      fromLocalPeerConnection.addEventListener("negotiationneeded", e => {
+        console.log(e);
       });
+      toLocalPeerConnection.addEventListener("negotiationneeded", e => {
+        console.log(e);
+      });
+      const tracks = new Promise(resolve => {
+        let ids = mediaStream.getTracks().map(({
+            id
+          }) => id),
+          i = 0;
+        toLocalPeerConnection.addEventListener("track", ({
+          track, streams: [stream]
+        }) => {
+          if (ids.includes(track.id) && ++i === ids.length) {
+            resolve(stream);
+          }
+        });
+      });
+      // Add initial audio and video MediaStreamTrack to PeerConnection, pass initial MediaStream
+      const {
+        sender: audioSender,
+        receiver: audioReceiver
+      } = fromLocalPeerConnection.addTransceiver(audioTrack, {
+        streams: [mediaStream]
+      });
+      const {
+        sender: videoSender,
+        receiver: videoReceiver
+      } = fromLocalPeerConnection.addTransceiver(videoTrack, {
+        streams: [mediaStream]
+      });
+      console.log(audioSender, videoSender, audioReceiver, videoReceiver);
+      const offer = await fromLocalPeerConnection.createOffer();
+      await toLocalPeerConnection.setRemoteDescription(offer);
+      await fromLocalPeerConnection.setLocalDescription(toLocalPeerConnection.remoteDescription);
+      const answer = await toLocalPeerConnection.createAnswer();
+      await fromLocalPeerConnection.setRemoteDescription(answer);
+      await toLocalPeerConnection.setLocalDescription(fromLocalPeerConnection.remoteDescription);
+      const stream = await tracks;
+      video.srcObject = stream;
+      // When MediaStream is not set as srcObject Blob at MediaRecorder
+      // dataavailable event.data size is 0
+      const urls = await Promise.all([{
+        src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
+        from: 0,
+        to: 4
+      }, {
+        src: "https://mirrors.creativecommons.org/movingimages/webm/ScienceCommonsJesseDylan_240p.webm#t=10,20",
+        from: 10,
+        to: 20
+      }, {
+        from: 55,
+        to: 60,
+        src: "https://nickdesaulniers.github.io/netfix/demo/frag_bunny.mp4"
+      }, {
+        from: 0,
+        to: 5,
+        src: "https://raw.githubusercontent.com/w3c/web-platform-tests/master/media-source/mp4/test.mp4"
+      }, {
+        from: 0,
+        to: 5,
+        src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+      }, {
+        from: 0,
+        to: 5,
+        src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
+      }, {
+        from: 0,
+        to: 6,
+        src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6"
+      }].map(async({
+        from,
+        to,
+        src
+      }) => {
+        try {
+          const request = await fetch(src);
+          const blob = await request.blob();
+          const blobURL = URL.createObjectURL(blob);
+          const url = new URL(src);
+          console.log(url.hash);
+          return blobURL + (url.hash || `#t=${from},${to}`);
+        } catch (e) {
+          throw e;
+        }
+      }));
+      const videoStream = document.createElement("video");
+      videoStream.muted = true;
+      videoStream.onloadedmetadata = e => {
+        const {
+          videoWidth: width,
+          videoHeight: height
+        } = e.target;
+        videoStream.width = video.width = width;
+        videoStream.height = video.height = height;
+      }
+      const ms = videoStream.captureStream();
+      ms.onaddtrack = async e => {
+        console.log(e.track.getSettings());
+        if (e.track.kind === "audio") {
+          await audioSender.replaceTrack(e.track);
+        } else {
+          await videoSender.replaceTrack(e.track);
+        }
+      }
+      for (const blobURL of urls) {
+        await new Promise(resolve => {
+          videoStream.addEventListener("pause", async _ => {
+            recorder.pause();
+            resolve();
+          }, {
+            once: true
+          });
+          videoStream.addEventListener("canplay", async _ => {
+            if (!recorder) {
+              await new Promise(resizedPromise => {
+                // handle resize event
+                const handleResize = async _ => {
+                  const {
+                    width, height
+                  } = ms.getVideoTracks()[0].getSettings();
+                  console.log(video.width, width);
+                  // check width and height of <video> element
+                  if (video.width === width && video.height === height) {
+                    console.log(video.width, width);
+                    video.removeEventListener("resize", handleResize);
+                    await new Promise(unmutePromise => {
+                      const [track] = mediaStream.getVideoTracks();
+                      let now = performance.now();
+                      console.log(video.currentTime, track.muted, stream.getVideoTracks()[0].muted, ms.getVideoTracks()[0].muted);
+                      // await unmute event of video track
+                      track.addEventListener("unmute", async _ => {
+                        console.log(_.type, (performance.now() - now) / 1000, video.currentTime, video.width, video.videoWidth, track.getSettings().width);
+                        unmutePromise(await videoStream.play());
+                      }, {
+                        once: true
+                      })
+                    });
+                    recorder = new MediaRecorder(stream, {
+                    /*
+                      https://cs.chromium.org/chromium/src/third_party/openh264/README.chromium
+                      
+                      Name: OpenH264
+                      Short Name: openh264
+                      URL: http://www.openh264.org/
+                      Version: unknown
+                      (Cut at 6f26bce0b1c4e8ce0e13332f7c0083788def5fdf, which is between 1.9.0 and
+1.10.0)
+                      License: 2-Clause BSD
+                      License File: src/LICENSE
+                      Security Critical: yes
+                     
+                      Description:
+                      Cisco's H.264 video codec implementation.
+
+                        Important:
+                        While the OpenH264 source code is under BSD license, other license(s) also
+                        apply for builds (MPEG-LA patent), see www.openh264.org for more information.
+
+                      Local Modifications:
+                      N/A
+                    */
+                      mimeType: "video/x-matroska;codecs=h264"
+                    });
+                    recorder.onstart = _ => {
+                      console.log(_.type);
+                    }
+                    result = new Promise(resolve => {
+                      recorder.addEventListener("dataavailable", ({
+                        data
+                      }) => {
+                        resolve(data);
+                      }, {
+                        once: true
+                      })
+                    });
+                    recorder.start();
+                    resizedPromise();
+                  }
+                }
+                video.addEventListener("resize", handleResize);
+              });
+            } else {
+              await videoStream.play();
+              recorder.resume();
+            }
+          }, {
+            once: true
+          });
+          videoStream.src = blobURL;
+        });
+      }
+      recorder.stop();
+      let blob = await result;
+      let blobURL = URL.createObjectURL(blob);
+      await audioContext.close();
+      worker.terminate();
+      [mediaStream.getTracks(), stream.getTracks(), ms.getTracks()].flat()
+        .forEach(track => {
+          track.enabled = false;
+          track.stop();
+          console.log(track);
+        });
+      video.srcObject = null;
+      video.remove();
+      videoStream.src = "";
+      videoStream.remove();
+      const recordedVideo = document.createElement("video");
+      document.body.appendChild(recordedVideo);
+      recordedVideo.autoplay = recordedVideo.controls = true;
+      recordedVideo.onresize = ({
+        target: {
+          videoWidth, videoHeight
+        }
+      }) => {
+        console.log(videoWidth, videoHeight);
+      };
+      recordedVideo.src = blobURL;
+    })();
   </script>
 </body>
-
 </html>
