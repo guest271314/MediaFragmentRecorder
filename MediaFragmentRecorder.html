@@ -8,47 +8,43 @@
 
 <body>
   <h1 id="click">click</h1>
-  <video id="playlist" src="" controls="true" autoplay="true"></video>
+  <video id="playlist" src="" controls="true" preload="auto"></video>
   <script>
     const captureStream = mediaElement =>
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
-    const createMediaStreamTracks = _ => {        
-        const audioContext = new AudioContext();
-        const gainNode = audioContext.createGain();
-        const oscillator = audioContext.createOscillator();
-        oscillator.frequency.value = 0;
-        const audioStreamDestination = audioContext.createMediaStreamDestination();
-        const mediaStream = audioStreamDestination.stream;
-        const [audioTrack] = mediaStream.getAudioTracks();
-        gainNode.gain.value = 1;
-        oscillator.connect(gainNode).connect(audioContext.destination);
-        oscillator.start();
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const canvasStream = canvas.captureStream(0);
-        const [videoTrack] = canvasStream.getVideoTracks();
-        mediaStream.addTrack(videoTrack);
-        let raf;
-        const draw = async () => {
-          ctx.fillStyle = "black";
-          ctx.fillRect(0, 0, width, height);
-          requestFrame();
-          requestAnimationFrame(draw)
-        };
-        console.log(canvasStream.requestFrame);
-        const requestFrame = _ => canvasStream.requestFrame ? canvasStream.requestFrame() : videoTrack.requestFrame();
-        raf = requestAnimationFrame(draw);
-        return {mediaStream, audioContext, raf};
+    const createMediaStreamTracks = _ => {
+      const audioContext = new AudioContext();
+      const gainNode = audioContext.createGain();
+      const oscillator = audioContext.createOscillator();
+      oscillator.frequency.value = 0;
+      const audioStreamDestination = audioContext.createMediaStreamDestination();
+      const mediaStream = audioStreamDestination.stream;
+      const [audioTrack] = mediaStream.getAudioTracks();
+      gainNode.gain.value = 1;
+      oscillator.connect(gainNode).connect(audioContext.destination);
+      oscillator.start();
+      const canvas = document.createElement("canvas");
+      canvas.width = playlist.width = screen.width;
+      canvas.height = playlist.height = screen.height;
+      const ctx = canvas.getContext("2d");
+      const canvasStream = canvas.captureStream(0);
+      const [videoTrack] = canvasStream.getVideoTracks();
+      mediaStream.addTrack(videoTrack);
+      let raf;
+      const draw = async() => {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, screen.width, screen.height);
+        requestFrame();
+        requestAnimationFrame(draw)
+      };
+      console.log(canvasStream.requestFrame);
+      const requestFrame = _ => canvasStream.requestFrame ? canvasStream.requestFrame() : videoTrack.requestFrame();
+      raf = requestAnimationFrame(draw);
+      return {
+        mediaStream, audioContext, raf, canvas
+      };
     }
     const kinds = ["video", "audio"];
-    const width = 320;
-    const height = 240;
-    const videoConstraints = {
-      frameRate: 30,
-      resizeMode: "crop-and-scale",
-      width,
-      height
-    };
     const blobURLS = [];
     const urls = Promise.all([{
       src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
@@ -89,15 +85,14 @@
         const blobURL = URL.createObjectURL(blob);
         blobURLS.push(blobURL);
         const url = new URL(src);
-        console.log(url.hash);
+        //console.log(url.hash);
         return blobURL + (url.hash || `#t=${from},${to}`);
       } catch (e) {
-        throw e;;
+        throw e;
       }
     }));
     let playlist = document.getElementById("playlist");
-    playlist.width = width;
-    playlist.height = height;
+    
     let recorder;
     let resolveResult;
     let result;
@@ -106,10 +101,12 @@
       .addEventListener("click", async e => {
         try {
           // create audio and video MediaStreamTrack
-          let {mediaStream, raf, audioContext} = createMediaStreamTracks();
+          let {
+            mediaStream, raf, audioContext, canvas
+          } = createMediaStreamTracks();
           const [videoTrack, audioTrack] = [mediaStream.getVideoTracks()[0], mediaStream.getAudioTracks()[0]];
           try {
-            await videoTrack.applyConstraints(videoConstraints);
+            // await videoTrack.applyConstraints(videoConstraints);
           } catch (e) {
             console.error(e, e.name === "OverconstrainedError");
           }
@@ -184,17 +181,19 @@
           await Promise.all(unmutePromises);
           for (const [index, blobURL] of media.entries()) {
             await new Promise(async resolve => {
+              playlist.addEventListener("resize", async e => {
+                await playlist.play();
+              });
+              playlist.addEventListener("loadedmetadata", _ => {
+                console.log(playlist.videoWidth, playlist.videoHeight);
+                playlist.width = canvas.width = playlist.videoWidth;
+                playlist.height = canvas.height = playlist.videoHeight;
+              });
               playlist.addEventListener("play", async e => {
-                console.log(e, e.target.readyState);
+                console.log(e.type);
                 const stream = captureStream(playlist);
                 const [playlistVideoTrack] = stream.getVideoTracks();
                 const [playlistAudioTrack] = stream.getAudioTracks();
-                // Apply same constraints on each video MediaStreamTrack
-                try {
-                  await playlistVideoTrack.applyConstraints(videoConstraints);
-                } catch (e) {
-                  console.error(e, e.name === "OverconstrainedError");
-                }
                 console.log(playlistVideoTrack.getSettings());
                 // Replace audio and video MediaStreamTrack with a new media resource
                 // id of the initial MediaStreamTrack does not change
@@ -210,32 +209,29 @@
                   // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
                   if (!playlist.mozCaptureStream) {
                     playlist.cloneNode(true).srcObject = mediaStream;
-                  }                
+                  }
                   recorder = new MediaRecorder(mediaStream, {
-                    mimeType: "video/webm;codecs=vp8,opus",
-                    audioBitsPerSecond: 128000,
-                    videoBitsPerSecond: 2500000
+                    mimeType: "video/webm;codecs=vp8,opus"
                   });
                   recorder.addEventListener("start", e => {
-                    console.log(e);
+                    console.log(e.type);
                   });
                   recorder.addEventListener("stop", e => {
-                    console.log(e);
                     resolveResult(result);
                   });
                   recorder.addEventListener("dataavailable", e => {
-                    console.log(e.data);
                     result = e.data;
+                  }, {
+                    once: true
                   });
                   recorder.addEventListener("error", e => {
                     console.log(e);
                   });
                   recorder.addEventListener("pause", e => {
-                    console.log(e);
+                    console.log(e.type);
                   });
                 }
                 if (recorder && recorder.state === "inactive") {
-                  console.log(playlist.readyState);
                   try {
                     recorder.start();
                   } catch (e) {
@@ -245,14 +241,13 @@
                   if (recorder.state === "paused") {
                     recorder.resume();
                   }
-                  console.log(recorder.state, recorder.stream.getTracks());
                 }
-                
+
               }, {
                 once: true
               });
               playlist.addEventListener("pause", e => {
-                console.log(e);
+                // console.log(e);
                 if (recorder.state === "recording") {
                   recorder.pause();
                 }
@@ -262,14 +257,16 @@
                 // https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
                 playlist.remove();
                 playlist = document.createElement("video");
-                playlist.width = width;
-                playlist.height = height;
+                playlist.id = "playlist";
                 playlist.autoplay = true;
+                playlist.width = canvas.width;
+                playlist.height = canvas.height;
                 document.body.appendChild(playlist);
                 resolve();
               }, {
                 once: true
               });
+              playlist.onresize = e => console.log(e.type);
               playlist.src = blobURL;
             });
           }
@@ -277,12 +274,10 @@
           let blob = await promiseResult;
           cancelAnimationFrame(raf);
           await audioContext.close();
-          blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
           [audioTrack, videoTrack, ...mediaStream.getTracks()]
           .forEach(track => {
             track.stop();
             track.enabled = false;
-            console.log(track);
           });
           fromLocalPeerConnection.close();
           toLocalPeerConnection.close();
@@ -290,10 +285,9 @@
           playlist.remove();
           const videoStream = document.createElement("video");
           videoStream.addEventListener("canplaythrough", e => {
-            console.log(videoStream.duration, videoStream.seekable.end(0));
+            console.log(videoStream.videoWidth, videoStream.videoHeight);
+            blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
           });
-          videoStream.width = width;
-          videoStream.height = height;
           videoStream.controls = true;
           document.body.appendChild(videoStream);
           videoStream.src = URL.createObjectURL(blob);
@@ -306,4 +300,5 @@
       });
   </script>
 </body>
+
 </html>
