@@ -21,14 +21,6 @@
       return tracks;
     }
     const kinds = ["video", "audio"];
-    const width = 320;
-    const height = 240;
-    const videoConstraints = {
-      frameRate: 30,
-      resizeMode: "crop-and-scale",
-      width,
-      height
-    };
     const blobURLS = [];
     const urls = Promise.all([{
       src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
@@ -72,12 +64,10 @@
         console.log(url.hash);
         return blobURL + (url.hash || `#t=${from},${to}`);
       } catch (e) {
-        throw e;;
+        throw e;
       }
     }));
     let playlist = document.getElementById("playlist");
-    playlist.width = width;
-    playlist.height = height;
     let recorder;
     let resolveResult;
     let result;
@@ -88,11 +78,6 @@
           // create audio and video MediaStreamTrack
           const mediaStreamTracks = createMediaStreamTracks();
           const [videoTrack, audioTrack] = mediaStreamTracks;
-          try {
-            await videoTrack.applyConstraints(videoConstraints);
-          } catch (e) {
-            console.error(e, e.name === "OverconstrainedError");
-          }
           let mediaStream = new MediaStream([videoTrack, audioTrack]);
           console.log("initial MediaStream, audio and video MediaStreamTracks", mediaStream, mediaStream.getTracks());
           let tracks = 0;
@@ -157,6 +142,7 @@
           await fromLocalPeerConnection.setRemoteDescription(answer);
           await toLocalPeerConnection.setLocalDescription(fromLocalPeerConnection.remoteDescription);
           let media = await urls;
+          let len = media.length;
           await fromConnection;
           await toConnection;
           await mediaStreamTrackPromise;
@@ -165,26 +151,21 @@
           // following SecurityError: The operation is insecure. at MediaRecorder.start()
           // play full media fragment at index 1 of media array (copied to index 0)
           if (!!playlist.mozCaptureStream) {
-            media.unshift(media[0].replace(/#.+$/, "#t=0,0.4"));
+            media.unshift(media[0].replace(/#.+$/, "#t=0,0.1"));
             console.log(media);
           }
           console.log(audioSender, videoSender, mediaStream);
           Promise.all(unmutePromises)
           .then(tracks => console.log("unmute event", tracks), console.error);
           
-          for (const [index, blobURL] of media.entries()) {
+          for (const blobURL of media) {
             await new Promise(async resolve => {
               playlist.addEventListener("play", async e => {
+
                 console.log(e, e.target.readyState);
                 const stream = captureStream(playlist);
                 const [playlistVideoTrack] = stream.getVideoTracks();
                 const [playlistAudioTrack] = stream.getAudioTracks();
-                // Apply same constraints on each video MediaStreamTrack
-                try {
-                  await playlistVideoTrack.applyConstraints(videoConstraints);
-                } catch (e) {
-                  console.error(e, e.name === "OverconstrainedError");
-                }
                 console.log(playlistVideoTrack.getSettings());
                 // Replace audio and video MediaStreamTrack with a new media resource
                 // id of the initial MediaStreamTrack does not change
@@ -194,17 +175,20 @@
                 // instead of the sender's existing track." 
                 await videoSender.replaceTrack(playlistVideoTrack);
                 await audioSender.replaceTrack(playlistAudioTrack);
+                // initial tracks for Mozilla 
+                if (media.length > len) {
+                  len = media.length;
+                  return false;
+                }
                 if (!recorder) {
                   // Chromium outputs Blob with size 0 Blob {size: 0, type: "video/webm;codecs=vp8,opus"}
                   // if mediaStream is not attached to a <video> element, set srcObject to a <video> element
                   // https://bugs.chromium.org/p/chromium/issues/detail?id=952700
                   if (!playlist.mozCaptureStream) {
                     playlist.cloneNode(true).srcObject = mediaStream;
-                  }                
+                  }
                   recorder = new MediaRecorder(mediaStream, {
-                    mimeType: "video/webm;codecs=vp8,opus",
-                    audioBitsPerSecond: 128000,
-                    videoBitsPerSecond: 2500000
+                    mimeType: "video/webm;codecs=vp8,opus"
                   });
                   recorder.addEventListener("start", e => {
                     console.log(e);
@@ -223,6 +207,7 @@
                   recorder.addEventListener("pause", e => {
                     console.log(e);
                   });
+                  
                 }
                 if (recorder && recorder.state === "inactive") {
                   console.log(playlist.readyState);
@@ -232,10 +217,10 @@
                     console.error(e);
                   }
                 } else {
-                  if (recorder.state === "paused") {
+                  if (recorder && recorder.state === "paused") {
                     recorder.resume();
                   }
-                  console.log(recorder.state, recorder.stream.getTracks());
+                  console.log(recorder);
                 }
                 
               }, {
@@ -243,7 +228,7 @@
               });
               playlist.addEventListener("pause", e => {
                 console.log(e);
-                if (recorder.state === "recording") {
+                if (recorder && recorder.state === "recording") {
                   recorder.pause();
                 }
                 // Firefox 68 does not populate MediaStream with audio and video MediaStreamTrack
@@ -252,8 +237,6 @@
                 // https://bugzilla.mozilla.org/show_bug.cgi?id=1544650
                 playlist.remove();
                 playlist = document.createElement("video");
-                playlist.width = width;
-                playlist.height = height;
                 playlist.autoplay = true;
                 document.body.appendChild(playlist);
                 resolve();
@@ -265,7 +248,7 @@
           }
           recorder.stop();
           let blob = await promiseResult;
-          blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
+
           [audioTrack, videoTrack, ...mediaStream.getTracks()]
           .forEach(track => {
             track.stop();
@@ -279,14 +262,15 @@
           const videoStream = document.createElement("video");
           videoStream.addEventListener("canplaythrough", e => {
             // Firefox 68 40.5 40.5
+            // Chromium 70 40.7 40.7
             // Chromium 73 41.5 41.5
             console.log(videoStream.duration, videoStream.seekable.end(0));
+            blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
           });
-          videoStream.width = width;
-          videoStream.height = height;
           videoStream.controls = true;
           document.body.appendChild(videoStream);
           videoStream.src = URL.createObjectURL(blob);
+          blobURLS.forEach(blobURL => URL.revokeObjectURL(blobURL));
         } catch (e) {
           console.error(e);
           console.trace();
