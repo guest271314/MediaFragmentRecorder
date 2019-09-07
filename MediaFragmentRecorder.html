@@ -14,96 +14,90 @@
     const click = document.getElementById("click");
     const captureStream = mediaElement =>
       !!mediaElement.mozCaptureStream ? mediaElement.mozCaptureStream() : mediaElement.captureStream();
-    class MediaFragmentRecorder {
-      constructor({
-        urls = [],
-          width = 320,
-          height = 240
-      } = {}) {
-        if (urls.length === 0) {
-          throw new TypeError("no urls passed to MediaFragmentRecorder");
-        }
-        return (async() => {
-          const chunks = [];
-          let duration = 0;
-          let media = await Promise.all(
-            urls.map(async({
-              from,
-              to,
-              src
-            }, index) => {
-              const url = new URL(src);
-              // get media fragment hash from `src`
-              if (url.hash.length) {
-                [from, to] = url.hash.match(/\d+|\d+\.|d+/g);
-              }
-              return {
-                blob: await fetch(src).then(response => response.blob()),
-                from,
-                to
-              }
-            }));
-          for (let {
-              from,
-              to,
-              blob
-            }
-            of media) {
-            await new Promise(async(resolve) => {
-              let recorder;
-              const blobURL = URL.createObjectURL(blob);
-              const video = document.createElement("video");
-              video.autoplay = true;
-              video.preload = "auto";
-              document.body.appendChild(video);
-              video.addEventListener("play", async e => {
-                const mediaStream = captureStream(video);
-                try {
-                  console.log(mediaStream.getVideoTracks()[0]);
-                  // variable video width, height should be recorded 
-                  // https://bugs.chromium.org/p/chromium/issues/detail?id=972470
-                  // await mediaStream.getVideoTracks()[0].applyConstraints(videoConstraints);
-                } catch (e) {
-                  console.error(e, mediaStream.getVideoTracks()[0].getSettings(), mediaStream.getVideoTracks()[0].getConstraints());
-                }
-                recorder = new MediaRecorder(mediaStream, {
-                  mimeType: "video/webm;codecs=vp8,opus"
-                });
-                recorder.start();
-                recorder.addEventListener("stop", e => {
-                  resolve();
-                  console.log(e);
-                }, {
-                  once: true
-                });
-                recorder.addEventListener("dataavailable", async(e) => {
-                  console.log(e);
-                  chunks.push(await new Response(e.data).arrayBuffer());
-                  URL.revokeObjectURL(blobURL);
-                });
-              }, {
-                once: true
-              });
-              video.addEventListener("pause", e => {
-                console.log(video.played.end(0) - video.played.start(0), video.currentTime - from, video.currentTime);
-                recorder.stop();
-                duration += video.currentTime - from;
-                video.remove();
-              }, {
-                once: true
-              });
-              video.src = `${blobURL}#t=${from},${to}`;
-            })
-          };
-          return {
-            chunks,
-            duration,
-            width,
-            height
+    async function MediaFragmentRecorder({
+      urls = [],
+        width = 320,
+        height = 240
+    } = {}) {
+      if (urls.length === 0) {
+        throw new TypeError("no urls passed to MediaFragmentRecorder");
+      }
+      const chunks = [];
+      let duration = 0;
+      console.log(urls);
+      let media = await Promise.all(
+        urls.map(async({
+          from,
+          to,
+          src
+        }, index) => {
+          const url = new URL(src);
+          // get media fragment hash from `src`
+          if (url.hash.length) {
+            [from, to] = url.hash.match(/\d+|\d+\.|d+/g);
           }
-        })()
+          return {
+            blob: await fetch(src).then(response => response.blob()),
+            from,
+            to
+          }
+        }));
+      for (let {
+          from,
+          to,
+          blob
+        }
+        of media) {
+        await new Promise((resolve) => {
+          let recorder;
+          const blobURL = URL.createObjectURL(blob);
+          const video = document.createElement("video");
+          video.autoplay = true;
+          video.preload = "auto";
+          document.body.appendChild(video);
+          video.addEventListener("play", async e => {
+            const mediaStream = captureStream(video);
+            try {
+              console.log(mediaStream.getVideoTracks()[0]);
+              // variable video width, height should be recorded 
+              // https://bugs.chromium.org/p/chromium/issues/detail?id=972470
+            } catch (e) {
+              console.error(e, mediaStream.getVideoTracks()[0].getSettings(), mediaStream.getVideoTracks()[0].getConstraints());
+            }
+            recorder = new MediaRecorder(mediaStream, {
+              mimeType: "video/webm;codecs=vp8,opus"
+            });
+            recorder.addEventListener("dataavailable", async(e) => {
+              console.log(e);
+              const chunk = await new Response(e.data).arrayBuffer();
+              chunks.push(chunk);
+              console.log(chunks);
+              resolve();
+              URL.revokeObjectURL(blobURL);
+            }, {once: true});
+            recorder.start();
+          }, {
+            once: true
+          });
+          video.addEventListener("pause", e => {
+            console.log(video.played.end(0) - video.played.start(0), video.currentTime - from, video.currentTime);
+            recorder.stop();
+            duration += video.currentTime - from;
+            video.remove();
+          }, {
+            once: true
+          });
+          video.src = `${blobURL}#t=${from},${to}`;
+        })
+      };
+      return {
+        chunks,
+        duration,
+        width,
+        height
       }
     }
+  
     let urls = [{
       src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
       from: 0,
@@ -129,7 +123,7 @@
     }, {
       src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4#t=0,6"
     }];
-    click.onclick = e => new MediaFragmentRecorder({
+    click.onclick = e => MediaFragmentRecorder({
         urls
       })
       .then(({
@@ -139,9 +133,9 @@
         height
       }) => {
         let recorder, mediaStream;
+        // variable video width, height should be displayed 
+        // https://bugs.chromium.org/p/chromium/issues/detail?id=983777
         const video = document.createElement("video");
-        // video.width = width;
-        // video.height = height;
         video.controls = true;
         video.autoplay = true;
         document.body.appendChild(video);
@@ -181,7 +175,7 @@
         }
         mediaSource.sourceBuffers.addEventListener("addsourcebuffer", e => console.log(e));
         video.addEventListener("canplay", e => {
-          console.log(e, video.readyState, video.paused, duration, video.buffered.end(0), video.seekable.end(0), video.duration, mediaSource.duration);
+          console.log(e, video.readyState, video.paused, video.duration, mediaSource.duration);
         });
         video.addEventListener("playing", e => {
           console.log(e);
@@ -195,24 +189,22 @@
           });
           recorder.addEventListener("dataavailable", e => {
             let media = document.createElement("video");
-            // media.width = width;
-            // media.height = height;
             media.controls = true;
             media.addEventListener("loadedmetadata", e => {
-              console.log(e, e.target.duration, e.target.buffered.end(0), e.target.seekable.end(0), duration, mediaSource.duration);
+              console.log(e, e.target.duration, duration, mediaSource.duration);
             });
-            
+
             document.body.appendChild(media);
             media.src = URL.createObjectURL(e.data);
           });
           recorder.addEventListener("stop", e => console.log(e));
           recorder.start();
-          console.log(e, duration, video.buffered.end(0), video.seekable.end(0), video.duration, mediaSource.duration);
+          console.log(e, duration, video.duration, mediaSource.duration);
         }, {
           once: true
         });
         video.addEventListener("waiting", handleWaiting);
-        video.addEventListener("pause", e => console.log(e, duration, video.buffered.end(0), video.seekable.end(0), video.duration, mediaSource.duration));
+        video.addEventListener("pause", e => console.log(e, duration, video.duration, mediaSource.duration));
         video.addEventListener("stalled", e => console.log(e));
         video.addEventListener("loadedmetadata", e => console.log(e));
         video.addEventListener("loadeddata", e => console.log(e));
@@ -222,7 +214,9 @@
         video.addEventListener("abort", e => console.log(e));
         video.addEventListener("emptied", e => console.log(e));
         video.addEventListener("suspend", e => console.log(e));
-        mediaSource.addEventListener("sourceopen", sourceOpen, {once: true});
+        mediaSource.addEventListener("sourceopen", sourceOpen, {
+          once: true
+        });
         video.src = URL.createObjectURL(mediaSource);
       })
       .catch(e => console.error(e));
