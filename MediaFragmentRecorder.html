@@ -5,8 +5,9 @@
 </head>
 
 <body>
-  <h1>click</h1>
+  <h1></h1>
   <script>
+  (async() => {
     const blobs = [];
     const urls = Promise.all([{
       src: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Xacti-AC8EX-Sample_video-001.ogv",
@@ -53,9 +54,13 @@
         throw e;;
       }
     }));
-
-    onclick = async _ => {
-      const playlist = await urls;
+    // handle Uncaught (in promise) DOMException: Failed to execute 'requestPictureInPicture' on 'HTMLVideoElement': 
+    // Must be handling a user gesture if there isn't already an element in Picture-in-Picture.
+    // await urls before click event and requestPictureInPicture()
+    const playlist = await urls;
+    const click = document.querySelector("h1");
+    click.textContent = "Click";
+    click.addEventListener("click", async _ => {
       console.log(playlist);
       const video = document.createElement("video");
       const ac = new AudioContext();
@@ -66,7 +71,6 @@
       mes.connect(msd);
       const [audioTrack] = audioStream.getAudioTracks();
       let recorder, stream, videoTrack;
-
       async function recordPictureInPictureWindow(urls) {
         let result;
         for (const blobURL of playlist) {
@@ -112,7 +116,6 @@
             }, {
               once: true
             });
-
             video.src = blobURL;
           });
         }
@@ -125,10 +128,12 @@
       recordPictureInPictureWindow()
       .then(blobURL => {
          const videoStream = document.createElement("video");
+         document.body.appendChild(videoStream);
          videoStream.autoplay = true;
          videoStream.src = blobURL;
       });
-    }
+    }, {once: true});
+  })();
   </script>
 </body>
 </html>
