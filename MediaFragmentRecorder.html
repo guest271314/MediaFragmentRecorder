@@ -74,7 +74,7 @@
           const [videoTrack] = stream.getVideoTracks();
 
           videoTrack.cursor = "never"; // this has little/no effect
-          videoTrack.applyConstraints({
+          await videoTrack.applyConstraints({
             cursor: "never"
           }); // this has little/no effect
           console.log(videoTrack.cursor, videoTrack.getConstraints(), videoTrack.getSettings());
