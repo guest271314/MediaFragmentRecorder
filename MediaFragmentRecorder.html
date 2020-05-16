@@ -16,7 +16,7 @@
 
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: {
-            cursor: "never", // this has little/no effect https://github.com/web-platform-tests/wpt/issues/16206
+            cursor: "never", // this has no effect https://github.com/web-platform-tests/wpt/issues/16206
             displaySurface: "browser"
           }
         });
