@@ -72,11 +72,11 @@
           const mixedAudio = context.createMediaStreamDestination();
           const [audioTrack] = mixedAudio.stream.getAudioTracks();
           const [videoTrack] = stream.getVideoTracks();
-
-          videoTrack.cursor = "never"; // this has little/no effect
+          // has no effect
+          videoTrack.cursor = "never"; 
           await videoTrack.applyConstraints({
             cursor: "never"
-          }); // this has little/no effect
+          }); 
           console.log(videoTrack.cursor, videoTrack.getConstraints(), videoTrack.getSettings());
           const mediaStream = new MediaStream([videoTrack, audioTrack]);
 
@@ -87,11 +87,7 @@
           const source = context.createMediaElementSource(video);
           source.connect(context.destination);
           source.connect(mixedAudio);
-          const recorder = new MediaRecorder(mediaStream, {
-            mimeType: "video/webm;codecs=vp8,opus",
-            audioBitsPerSecond: 128000,
-            videoBitsPerSecond: 2500000
-          });
+          const recorder = new MediaRecorder(mediaStream, {mimeType: "video/webm;codecs=vp8,opus");
           recorder.addEventListener("error", e => {
             console.error(e)
           });
@@ -135,7 +131,6 @@
                   once: true
                 });
 
-
                 video.addEventListener("pause", e => {
                   resolve();
                 }, {
@@ -162,5 +157,4 @@
       .addEventListener("click", go, {once: true});
   </script>
 </body>
-
 </html>
